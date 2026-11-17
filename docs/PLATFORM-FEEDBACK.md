@@ -107,3 +107,14 @@ sessions (even if slow) would let projects run their end-to-end tests in CI.
   value was 4. Not yet reduced to a minimal case.
 - `acde.config.jsonc` accepts an unknown `icon` value with only a warning; the valid names appear only
   in that warning.
+
+## 11. snapshot hides the focused input when it is transparent
+
+**Seen:** xterm (and most terminal and code-editor widgets) take keyboard input through a hidden,
+fully transparent textarea. A normal `snapshot` leaves it out; it appears only with `all`
+(`textbox "Terminal input" [focused] [transparent]`). An agent driving Tabby through `acde mcp`
+then tries to type into an output line or clicks the canvas before finding the real input with
+`query`.
+
+**Suggested fix:** always list the focused element, even when it is transparent, or mark the
+focused input in the window line so `act type` has an obvious target.

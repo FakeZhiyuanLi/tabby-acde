@@ -199,3 +199,9 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
   `sw_vers && uptime`, read the output from the screen and reported it correctly in 53 s, natively
   on macOS (Apple Silicon). Friction: its first `act type` into the terminal did not reach the shell;
   it recovered with key presses. To look at before the recording.
+- **Typing fix for agents.** xterm ignores input events (insertText) in screen reader mode, which is
+  how `act type` delivers text, so typed commands never reached the shell. `ReadableTerminalDecorator`
+  now forwards those events to the session unless a keypress with a character already delivered the
+  text (real typing, IME and paste use other paths). Verified on macOS: `act type` + Enter ran once.
+  Second agent run: 38 s, typing worked first time; it still had to search for the hidden input
+  (platform feedback item 11). Real keyboard typing still needs a manual check.

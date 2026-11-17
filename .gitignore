@@ -43,3 +43,6 @@ extras/UAC.exe
 
 # Built bundles for delivery (see WORKLOG.md), not tracked
 dist-artifacts/
+
+# macOS archive metadata
+._*

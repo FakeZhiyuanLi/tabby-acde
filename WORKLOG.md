@@ -193,3 +193,9 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
   network only. Tabby runs with `acde dev` on that display, so it can be used live from a browser.
   acdert needed the X11 client libraries (Xcursor, Xrandr, Xi, ...) that winit loads at runtime.
 - **Public fork.** Branch `acde` is pushed to a public GitHub fork of Eugeny/tabby.
+- **Demo hero spike: an agent drives Tabby through acde mcp (passed).** New `ReadableTerminalDecorator`
+  turns on xterm screen reader mode, so terminal rows appear as text in acde snapshot. A headless
+  Claude Code session limited to the acde MCP tools (no shell, no files) opened a Tabby tab, ran
+  `sw_vers && uptime`, read the output from the screen and reported it correctly in 53 s, natively
+  on macOS (Apple Silicon). Friction: its first `act type` into the terminal did not reach the shell;
+  it recovered with key presses. To look at before the recording.

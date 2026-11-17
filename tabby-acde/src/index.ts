@@ -4,6 +4,7 @@ import { PTYInterface, ShellProvider } from 'tabby-local'
 import { TerminalDecorator } from 'tabby-terminal'
 
 import { AgentStatusDecorator } from './agents/agentStatus'
+import { ReadableTerminalDecorator } from './agents/readable'
 import { AcdeRunRequests } from './agents/runRequests'
 import { AcdeHostWindow } from './hostWindow.service'
 import { AcdeMenus } from './menus'
@@ -21,6 +22,7 @@ import { AcdeDefaultShellProvider } from './shells'
         { provide: PTYInterface, useClass: AcdePTYInterface },
         { provide: ShellProvider, useClass: AcdeDefaultShellProvider, multi: true },
         { provide: TerminalDecorator, useClass: AgentStatusDecorator, multi: true },
+        { provide: TerminalDecorator, useClass: ReadableTerminalDecorator, multi: true },
     ],
 })
 export default class AcdeModule {

@@ -25,7 +25,7 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
 
 ## Environment
 
-- Runs only in the offline Podman sandbox `acde-sandbox` on rack-laptop (acde 0.0.11, Bun 1.4.4,
+- Runs only in the offline Podman sandbox `acde-sandbox` on a Linux workstation (acde 0.0.11, Bun 1.4.4,
   Node 22). Dependencies are installed by a separate networked container that never runs acde code.
 - Upstream: https://github.com/Eugeny/tabby at `467ce8e` (v1.0.238), MIT.
 
@@ -187,3 +187,9 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
   PORTING.md); pitch deck draft done; demo script done (docs/DEMO.md).
 - **Waiting on the user:** OK to publish a public GitHub fork; whether SSH-as-a-profile is enough;
   which machine runs the live demo; name for the cover slide.
+- **Live demo over VNC.** The sandbox now also runs a virtual X display (TigerVNC Xvnc) that listens
+  only on a Unix socket, with TCP turned off; the sandbox itself is still `--network none`. A
+  separate noVNC bridge container is the only networked piece, and it is bound to the private
+  network only. Tabby runs with `acde dev` on that display, so it can be used live from a browser.
+  acdert needed the X11 client libraries (Xcursor, Xrandr, Xi, ...) that winit loads at runtime.
+- **Public fork.** Branch `acde` is pushed to a public GitHub fork of Eugeny/tabby.

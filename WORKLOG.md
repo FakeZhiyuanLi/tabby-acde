@@ -176,3 +176,14 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
 - Deliverables checklist now: repo (local fork, branch `acde`; public fork waits for the user's OK),
   bundle (done), write-up with porting notes (done), pitch deck (next).
 - Next: pitch deck; a fresh clean-state demo recording; update the plan page.
+- **Pitch deck: done (draft).** 11 slides in a private Slides artifact:
+  https://claude.ai/artifact/XL9nduHKJ7FkuuuPBY8Ldx (downloads as .pptx or PDF from its page).
+  Cover, why Tabby, what I built, running shell, architecture, replaced dependencies, agent status,
+  run requests, platform findings, evidence numbers, next steps; speaker notes on every slide.
+  Placeholder to fill: [Your name] on the cover. Built without a design system (the account only has
+  an unrelated one). Not yet checked visually in the deck viewer.
+- **Deliverables status:** repo (local fork, branch acde) done; bundle done
+  (dist-artifacts/tabby-acde-1.0.238-acde.tar.gz); write-up + porting notes done (docs/WRITEUP.md,
+  PORTING.md); pitch deck draft done; demo script done (docs/DEMO.md).
+- **Waiting on the user:** OK to publish a public GitHub fork; whether SSH-as-a-profile is enough;
+  which machine runs the live demo; name for the cover slide.

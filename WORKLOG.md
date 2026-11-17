@@ -73,3 +73,28 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
   bug as a strong platform-feedback item; two small upstream web-build fixes worth offering to Tabby.
 - Next: phase 4, the `tabby-acde` plugin (PTY on `acde:terminal`, config in the private folder,
   window and platform services), then re-enable `tabby-local`.
+- **Phase 4, `tabby-acde` platform plugin: core done.** New plugin `tabby-acde/`:
+  `AcdePTYInterface`/`AcdePTYProxy` (local shells on `acde:terminal`: open, input, resize, close,
+  output/cwd/exit events; folder and command applied by typing ` cd -- '<dir>'` and ` exec <cmd>`
+  because `acde:terminal.open()` takes neither), `AcdeDefaultShellProvider` ("Default shell") and
+  `AcdeHostWindow` (`acde:window`: title, fullscreen, minimize, close). The host page registers
+  `acde:terminal` and `acde:window` with Tabby's module loader (the bundle declares `acde:*` external),
+  and the connector now saves Tabby's config as `tabby/config.yaml` in the app's private folder
+  (`acde:fs`). `tabby-local` is back in the plugin list; `process.platform` is reported as linux.
+- Verified in the sandbox, driven with `acde act`/`acde query` like an agent would:
+  1. "New terminal" opens a shell tab; the window title follows the shell (`ubuntu@acde-sandbox: ~`).
+  2. Typed `echo hello-from-tabby-on-acde && uname -sr && ls ~/projects` into xterm's input
+     (`acde query "textarea.xterm-helper-textarea"`): output, colours and prompt render correctly.
+     Screenshot: `acde-app/.acde/phase4-shell.png` (Mac: `~/Downloads/project-checkpoints/tabby-acde/`).
+  3. Toggling a setting writes `files/tabby/tabby/config.yaml` (3,764 bytes); after restarting the
+     app the setting is still off and the shell tab is restored. No console errors anywhere.
+- **acde runtime bug, wider than first thought:** none of acdert's DOM classes have enumerable
+  prototype methods (WebIDL requires them), so every class zone.js wraps loses its methods:
+  `MutationObserver`, `IntersectionObserver` (crashed xterm.js' RenderService) and `FileReader`.
+  Workaround now disables all three zone.js patches in `acde-app/index.html`.
+- Found for phase 6: Tabby's toolbar buttons are icon-only with no accessible names, so agents using
+  `acde inspect` cannot tell them apart. Adding names is part of the "agent-readable UI" work.
+- Not yet tested: split panes and live resize. To cover in phase 5 and the e2e tests.
+- **Demo and pitch material:** the shell screenshot is the hero shot for the deck; "an agent typed
+  this command through acde's inspect API" is a good live-demo beat.
+- Next: phase 5 (profiles with folder/command, SSH via system ssh, menus, renderer setting).

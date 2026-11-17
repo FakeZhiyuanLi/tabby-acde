@@ -1,31 +1,54 @@
 // Starts Tabby inside an acde window: loads the plugin bundles that build-acde.mjs copied into
 // public/tabby, then bootstraps Angular with a connector (the web build's host interface).
+import { fs } from 'acde:fs'
+import { terminal } from 'acde:terminal'
+import { window as acdeWindow } from 'acde:window'
+
+// Load order matters: tabby-acde comes after tabby-web so its window service takes precedence.
 const PLUGIN_NAMES = [
     'tabby-core',
     'tabby-settings',
     'tabby-terminal',
-    // tabby-local returns in phase 4, once tabby-acde provides its ShellProvider and PTYInterface.
+    'tabby-local',
     'tabby-web',
     'tabby-community-color-schemes',
     'tabby-linkifier',
+    'tabby-acde',
 ]
 const PLUGIN_BASE_URL = '/tabby/plugins'
 const APP_VERSION = '1.0.238-acde'
+const CONFIG_ROOT = 'private'
+const CONFIG_PATH = 'tabby/config.yaml'
 
-// Spike connector: config lives in memory. Phase 4 replaces it with the app's private folder.
+// Tabby's config is a YAML file in the app's private folder, the acde equivalent of
+// ~/.config/tabby/config.yaml. A missing file means first run: Tabby starts from its defaults.
+async function loadConfig () {
+    try {
+        return (await fs.readText(CONFIG_ROOT, CONFIG_PATH)).text
+    } catch (error) {
+        console.info('tabby-acde: no saved config yet', error?.message ?? error)
+        return ''
+    }
+}
+
+async function saveConfig (content) {
+    await fs.writeFile(CONFIG_ROOT, CONFIG_PATH, content, { mkdirs: true })
+}
+
 function createConnector () {
-    let configText = ''
     return {
-        loadConfig: async () => configText,
-        saveConfig: async (content) => { configText = content },
+        loadConfig,
+        saveConfig,
         getAppVersion: () => APP_VERSION,
         createSocket: () => { throw new Error('Network sockets are not available in the acde port') },
     }
 }
 
-// Modules the plugin bundles require that Tabby's web preload does not provide. webpack 5.110
-// builds the plugins for the node target, whose chunk loader requires 'node:url'.
+// Modules the plugin bundles require that Tabby's web preload does not provide: the acde modules
+// tabby-acde uses, and 'node:url', which the chunk loader of webpack 5.110's node target requires.
 function registerHostModules (tabby) {
+    tabby.registerModule('acde:terminal', { terminal })
+    tabby.registerModule('acde:window', { window: acdeWindow })
     tabby.registerModule('node:url', {
         pathToFileURL: (path) => new URL(path, window.location.href),
         fileURLToPath: (url) => new URL(url).pathname,

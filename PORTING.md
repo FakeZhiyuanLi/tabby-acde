@@ -26,6 +26,8 @@ New code (the port):
   plugin bundles and starts Tabby with a connector.
 - `scripts/build-acde.mjs`: builds typings and bundles for the kept packages and assembles them
   into `acde-app/public/tabby`.
+- `tabby-acde/`: the platform plugin. Local shells on `acde:terminal`, a default shell provider,
+  and the window on `acde:window`. Loaded after `tabby-web`, whose browser services it keeps.
 
 Upstream files changed (small fixes to Tabby's web build, both also useful upstream):
 
@@ -36,20 +38,32 @@ Upstream files changed (small fixes to Tabby's web build, both also useful upstr
 Host-level workarounds (in `acde-app`, no upstream change):
 
 - `node:url` stand-in for plugin bundles built for webpack's node target.
-- `window.__Zone_disable_MutationObserver = true`: acdert's `MutationObserver` methods are not
-  enumerable, so the zone.js wrapper would lose `observe()`.
+- `window.__Zone_disable_{MutationObserver,IntersectionObserver,FileReader} = true`: acdert's DOM
+  classes have non-enumerable prototype methods, so the zone.js wrappers would lose `observe()`,
+  `readAsText()` and the rest.
+- `window.process.platform = 'linux'`: Tabby's web preload reports macOS; acde behaves like Linux.
+- `acde:terminal.open()` takes no command or working directory, so `tabby-acde` types
+  ` cd -- '<dir>'` and ` exec <cmd>` into the new shell instead.
 
 ## Dependencies replaced
 
 | Upstream dependency | Native | Replacement |
 | --- | --- | --- |
-| `node-pty` (via Electron IPC) | yes | `acde:terminal` |
+| `node-pty` (via Electron IPC, `tabby-electron/src/pty.ts`) | yes | `acde:terminal` (`tabby-acde/src/pty.ts`) |
 | `native-process-working-directory` | yes | `acde:terminal` `cwd` events |
-| Electron config, window and shell APIs | no | `acde:fs`, `acde:window`, `acde:open` |
+| `ps-node`, `macos-native-processlist`, Windows process tree | yes | none: child-process info is stubbed |
+| `fontmanager-redux`, `keytar` | yes | not needed for local shells |
+| Electron shell detection (`/etc/passwd`, registry) | no | `AcdeDefaultShellProvider`: the shell acde starts |
+| Electron window (`ElectronHostWindow`) | no | `acde:window` (`tabby-acde/src/hostWindow.service.ts`) |
+| Config file via Electron main process | no | `acde:fs` private folder (`tabby/config.yaml`, in the host connector) |
 
 ## System capabilities used
 
-_To be filled in: terminal, fs, openFiles, window requests._
+| Capability | Used for |
+| --- | --- |
+| `terminal` | Every local shell tab (`acde:terminal`) |
+| `fs` | Tabby's config file in the app's private folder |
+| `acde:window` (no capability needed) | Window title, fullscreen, minimize, close |
 
 ## Cut, and why
 

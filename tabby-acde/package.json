@@ -1,0 +1,21 @@
+{
+  "name": "tabby-acde",
+  "version": "1.0.238-acde",
+  "description": "Dopame OS (acde) platform bindings: shells on acde:terminal, window on acde:window",
+  "keywords": [
+    "tabby-builtin-plugin"
+  ],
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "webpack --progress --color",
+    "watch": "webpack --progress --color --watch"
+  },
+  "files": [
+    "dist"
+  ],
+  "author": "Tabby Developers",
+  "license": "MIT",
+  "peerDependencies": {
+    "@angular/core": "^15"
+  }
+}

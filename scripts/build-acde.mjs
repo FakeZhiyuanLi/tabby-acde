@@ -16,6 +16,7 @@ export const acdePlugins = [
     'tabby-web',
     'tabby-community-color-schemes',
     'tabby-linkifier',
+    'tabby-acde',
 ]
 
 const webpackConfigs = [
@@ -25,6 +26,10 @@ const webpackConfigs = [
 
 function buildTypings () {
     for (const plugin of acdePlugins) {
+        // Only plugins that other plugins import publish typings (tabby-acde imports, nothing imports it).
+        if (!sh.test('-f', `${plugin}/tsconfig.typings.json`)) {
+            continue
+        }
         log.info('typings', plugin)
         const result = sh.exec(`yarn tsc --project ${plugin}/tsconfig.typings.json`)
         if (result.code !== 0) {

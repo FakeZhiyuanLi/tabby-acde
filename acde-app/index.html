@@ -5,12 +5,20 @@
     <meta charset="utf-8" />
     <title>Tabby</title>
     <script>
-      // zone.js wraps MutationObserver by copying the instance's enumerable members. acdert defines
-      // observe() and friends as non-enumerable class methods, so the wrapper would have none of
-      // them (breaking Polymer and acde's own frame code). Keep the runtime's class unpatched.
+      // zone.js wraps these classes by copying the instance's enumerable members. acdert defines
+      // their methods (observe(), readAsText()...) as non-enumerable class methods, unlike WebIDL,
+      // so the wrappers would have none of them: Polymer, xterm.js and acde's own frame code break.
+      // Keep the runtime's classes unpatched.
       window.__Zone_disable_MutationObserver = true
+      window.__Zone_disable_IntersectionObserver = true
+      window.__Zone_disable_FileReader = true
     </script>
     <script src="/tabby/preload.js"></script>
+    <script>
+      // Tabby's web preload reports macOS. acde behaves like Linux on every host (user agent,
+      // Ctrl editing shortcuts), so match it for Tabby's platform checks and default hotkeys.
+      window.process.platform = 'linux'
+    </script>
     <script src="/tabby/bundle.js"></script>
   </head>
   <body>

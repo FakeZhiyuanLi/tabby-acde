@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/@dopame/acde-api/config.schema.json",
+  // Tabby on Dopame OS. The page (index.html) hosts Tabby's web build, which the build script
+  // copies into public/tabby; src/main.js starts it with an acde connector.
+  "type": "app",
+  "id": "tabby",
+  "label": "Tabby",
+  "icon": "terminal",
+  "entry": "index.html",
+  // terminal: local shells (acde:terminal). fs: Tabby's config in the app's private folder.
+  "capabilities": {
+    "terminal": true,
+    "fs": true
+  },
+  "optional": [],
+  "services": [],
+  "requests": [],
+  "schemes": []
+}

@@ -45,6 +45,21 @@ async function buildBundles () {
     }
 }
 
+// Copies the built web entry and plugin bundles into the acde app, where Vite serves them unchanged
+// from public/. Each plugin keeps its package.json because Tabby's loader reads `main` from it.
+function assemble () {
+    const target = 'acde-app/public/tabby'
+    log.info('assemble', target)
+    sh.rm('-rf', target)
+    sh.mkdir('-p', `${target}/plugins`)
+    sh.cp('-R', 'web/dist/*', target)
+    for (const plugin of acdePlugins) {
+        sh.mkdir('-p', `${target}/plugins/${plugin}`)
+        sh.cp(`${plugin}/package.json`, `${target}/plugins/${plugin}/`)
+        sh.cp('-R', `${plugin}/dist`, `${target}/plugins/${plugin}/`)
+    }
+}
+
 try {
     const step = process.argv[2] ?? 'all'
     if (step === 'all' || step === 'typings') {
@@ -52,6 +67,9 @@ try {
     }
     if (step === 'all' || step === 'bundles') {
         await buildBundles()
+    }
+    if (step === 'all' || step === 'assemble') {
+        assemble()
     }
 } catch (error) {
     log.error('build-acde', String(error))

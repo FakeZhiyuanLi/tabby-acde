@@ -20,7 +20,24 @@ Dopame OS, built and tested with acde 0.0.11. The deliverable is a pure JS bundl
 
 ## What changed
 
-_In progress. Filled in phase by phase._
+New code (the port):
+
+- `acde-app/`: the acde project. `index.html` hosts Tabby's web build; `src/main.js` loads the
+  plugin bundles and starts Tabby with a connector.
+- `scripts/build-acde.mjs`: builds typings and bundles for the kept packages and assembles them
+  into `acde-app/public/tabby`.
+
+Upstream files changed (small fixes to Tabby's web build, both also useful upstream):
+
+- `web/polyfills.ts`: import `@angular/compiler` first, so partially compiled Angular packages
+  can JIT-compile when the web bundle is built without the Angular linker.
+- `web/entry.ts`: set `window.pluginModules`, which `ConfigService.enabledServices()` reads.
+
+Host-level workarounds (in `acde-app`, no upstream change):
+
+- `node:url` stand-in for plugin bundles built for webpack's node target.
+- `window.__Zone_disable_MutationObserver = true`: acdert's `MutationObserver` methods are not
+  enumerable, so the zone.js wrapper would lose `observe()`.
 
 ## Dependencies replaced
 

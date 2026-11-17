@@ -40,6 +40,9 @@ window['bootstrapTabby'] = async function bootstrap (options: BootstrapOptions):
         enableProdMode()
     }
 
+    // Same as app/src/entry.ts: ConfigService.enabledServices() reads the loaded plugin modules from here.
+    window['pluginModules'] = pluginModules
+
     const module = getRootModule(pluginModules)
     window['rootModule'] = module
 

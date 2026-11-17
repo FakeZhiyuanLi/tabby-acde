@@ -3,6 +3,8 @@
 /* eslint-disable @typescript-eslint/no-extraneous-class */
 
 import './polyfills.buffer'
+// Load the JIT compiler before any partially compiled Angular package (cdk, common) is evaluated.
+import '@angular/compiler'
 import { Duplex } from 'stream-browserify'
 
 const Tabby = window['Tabby']

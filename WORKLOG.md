@@ -48,3 +48,28 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
 - Cut `tabby-auto-sudo-password` too: it imports `tabby-ssh`.
 - Workarounds so far: none beyond skipping install scripts and native builds (the only upstream patch
   is for electron-builder, not needed).
+- **Phase 3, boot gate: PASSED (GO).** Added `acde-app/` (acde project hosting Tabby's web build:
+  `index.html` with Tabby's page structure, `src/main.js` that loads the plugin bundles and calls
+  `Tabby.bootstrap()` with a stub connector) and an `assemble` step in `build-acde.mjs` that copies the
+  web entry and plugin bundles into `acde-app/public/tabby`. Tabby boots in acdert with **no console
+  errors**; `acde act` on "Settings" opens the full settings tab (10 sections). Screenshots:
+  `acde-app/.acde/boot-5.png` (start page) and `boot-6-settings.png` (Mac copies in
+  `~/Downloads/project-checkpoints/tabby-acde/`).
+- Problems found on the way and how each was fixed:
+  1. Upstream web build: `@angular/cdk` and `@angular/common` were evaluated before `@angular/compiler`
+     (the web webpack config has no Angular linker), so `web/polyfills.ts` now imports the compiler first.
+  2. Upstream web build: `web/entry.ts` never set `window.pluginModules`, which
+     `ConfigService.enabledServices()` reads; it now does, as `app/src/entry.ts` does.
+  3. Plugin bundles (webpack 5.110, node target) require `node:url`; the host page registers a stand-in.
+  4. **acde runtime bug:** acdert's `MutationObserver` methods are non-enumerable class methods, so the
+     zone.js wrapper (which copies enumerable members) has no `observe()`. This broke Polymer and acde's
+     own `Frame.followScheme`. Workaround: `window.__Zone_disable_MutationObserver = true`.
+  5. `tabby-local` needs a `ShellProvider` and `PTYInterface` (normally from tabby-electron), so it is
+     left out until phase 4.
+- Possible acde rendering glitch: the "Minimum contrast ratio" number input draws as an empty box
+  although its value is 4. To confirm later.
+- Helper fix: `acde-sb start-dev` log path now replaces "/" in project names.
+- **Demo and pitch material so far:** boot and settings screenshots; the MutationObserver and zone.js
+  bug as a strong platform-feedback item; two small upstream web-build fixes worth offering to Tabby.
+- Next: phase 4, the `tabby-acde` plugin (PTY on `acde:terminal`, config in the private folder,
+  window and platform services), then re-enable `tabby-local`.

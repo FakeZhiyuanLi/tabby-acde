@@ -1,0 +1,30 @@
+<!doctype html>
+<!-- Same structure as Tabby's app/index.pug, with the web build's preload and bundle as classic scripts. -->
+<html class="tabby">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tabby</title>
+    <script>
+      // zone.js wraps MutationObserver by copying the instance's enumerable members. acdert defines
+      // observe() and friends as non-enumerable class methods, so the wrapper would have none of
+      // them (breaking Polymer and acde's own frame code). Keep the runtime's class unpatched.
+      window.__Zone_disable_MutationObserver = true
+    </script>
+    <script src="/tabby/preload.js"></script>
+    <script src="/tabby/bundle.js"></script>
+  </head>
+  <body>
+    <style id="custom-css"></style>
+    <root></root>
+    <app-root>
+      <div class="preload-logo">
+        <div>
+          <div class="tabby-logo"></div>
+          <h1 class="tabby-title">Tabby<sup>α</sup></h1>
+          <div class="progress"><div class="bar" style="width: 0%"></div></div>
+        </div>
+      </div>
+    </app-root>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

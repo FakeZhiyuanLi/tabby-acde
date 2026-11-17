@@ -127,3 +127,28 @@ agent CLIs (Claude Code among them) print exactly these symbols.
 
 **Suggested fix:** fall back through the system font list (Core Text cascade list on macOS) for
 missing glyphs, as browsers do.
+
+## 13. The backend bundler fails on optional native add-ons
+
+**Seen:** `ssh2` loads its optional native add-on `cpu-features` inside `try/catch` and works
+without it. `acde build` and `acde dev` resolve the `require` statically and stop with
+`UNRESOLVED_IMPORT ... cpufeatures.node`. Leaving optional dependencies out (`--omit=optional`)
+also removes the bundler's own platform binary, so that is no way out either.
+
+**Workaround:** a stub package named `cpu-features` that throws (`acde-app/backend/stubs`).
+
+**Suggested fix:** treat a `require` inside `try/catch` that cannot be resolved as an external that
+throws at run time (as esbuild does with `--packages` options), or let `acde.config.jsonc` list
+backend externals.
+
+## 14. The backend bundle has no `__dirname` or `__filename`
+
+**Seen:** the backend is bundled into one ES module, but CommonJS packages in it (here `ssh2`) still
+read `__dirname`. The backend crashes at start with `ReferenceError` (`ERR_AMBIGUOUS_MODULE_SYNTAX`
+on Node.js 22), and the runtime log only says `stopped (exit 1)`; the error appears only when the
+built backend is run by hand.
+
+**Workaround:** `acde-app/backend/cjsGlobals.js`, imported first, defines both.
+
+**Suggested fix:** inject `__dirname`/`__filename` shims for CommonJS modules in the bundle, and
+print the backend's stderr in `acde dev` when it exits during start.

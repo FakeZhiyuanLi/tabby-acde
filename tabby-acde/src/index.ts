@@ -3,6 +3,7 @@ import { HostWindowService } from 'tabby-core'
 import { PTYInterface, ShellProvider } from 'tabby-local'
 
 import { AcdeHostWindow } from './hostWindow.service'
+import { AcdeMenus } from './menus'
 import { AcdePTYInterface } from './pty'
 import { AcdeDefaultShellProvider } from './shells'
 
@@ -18,4 +19,8 @@ import { AcdeDefaultShellProvider } from './shells'
         { provide: ShellProvider, useClass: AcdeDefaultShellProvider, multi: true },
     ],
 })
-export default class AcdeModule { } // eslint-disable-line @typescript-eslint/no-extraneous-class
+export default class AcdeModule {
+    constructor (menus: AcdeMenus) {
+        menus.install()
+    }
+}

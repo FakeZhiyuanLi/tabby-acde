@@ -27,7 +27,8 @@ New code (the port):
 - `scripts/build-acde.mjs`: builds typings and bundles for the kept packages and assembles them
   into `acde-app/public/tabby`.
 - `tabby-acde/`: the platform plugin. Local shells on `acde:terminal`, a default shell provider,
-  and the window on `acde:window`. Loaded after `tabby-web`, whose browser services it keeps.
+  the window on `acde:window`, and a native menu bar (File, View). Loaded after `tabby-web`, whose
+  browser services it keeps.
 
 Upstream files changed (small fixes to Tabby's web build, both also useful upstream):
 
@@ -35,7 +36,13 @@ Upstream files changed (small fixes to Tabby's web build, both also useful upstr
   can JIT-compile when the web bundle is built without the Angular linker.
 - `web/entry.ts`: set `window.pluginModules`, which `ConfigService.enabledServices()` reads.
 
+- `tabby-core/src/components/appRoot.component.pug`, `tabHeader.component.pug`: accessible names
+  (`aria-label`) for icon-only toolbar and tab buttons, so screen readers and agents can use them.
+
 Host-level workarounds (in `acde-app`, no upstream change):
+
+- `fs` stand-in that treats every path as a folder: `tabby-local` validates working directories
+  with `fs.statSync`, which a page cannot do; the shell's `cd` reports a missing folder instead.
 
 - `node:url` stand-in for plugin bundles built for webpack's node target.
 - `window.__Zone_disable_{MutationObserver,IntersectionObserver,FileReader} = true`: acdert's DOM
@@ -64,6 +71,13 @@ Host-level workarounds (in `acde-app`, no upstream change):
 | `terminal` | Every local shell tab (`acde:terminal`) |
 | `fs` | Tabby's config file in the app's private folder |
 | `acde:window` (no capability needed) | Window title, fullscreen, minimize, close |
+
+## Profiles
+
+Local profiles work as in Tabby: a working directory, a command and arguments. Because
+`acde:terminal.open()` starts the default shell and takes no command, the profile is applied by
+typing one line into the new shell: `cd -- <dir> && clear; exec <command> <args>`. An SSH host can
+be a local profile with command `ssh` and args `[user@host]`, using the system ssh client.
 
 ## Cut, and why
 

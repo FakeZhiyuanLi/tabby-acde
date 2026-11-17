@@ -21,9 +21,25 @@ declare module 'acde:terminal' {
 declare module 'acde:window' {
     export type WindowState = 'normal' | 'minimized' | 'filled' | 'fullscreen'
 
+    export interface AppMenuItem {
+        id: string
+        label: string
+        shortcut?: string
+        checked?: boolean
+        disabled?: boolean
+        onSelect? (): void | Promise<void>
+    }
+
+    export interface AppMenu {
+        id: string
+        label: string
+        items: ({ type: 'separator' } | AppMenuItem)[]
+    }
+
     export interface AcdeWindow {
         readonly state: WindowState
         setTitle (title: string): void
+        setMenus (menus: readonly AppMenu[]): void
         requestState (state: WindowState): void
         minimize (): Promise<void>
         close (): Promise<boolean>

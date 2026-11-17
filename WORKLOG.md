@@ -98,3 +98,32 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
 - **Demo and pitch material:** the shell screenshot is the hero shot for the deck; "an agent typed
   this command through acde's inspect API" is a good live-demo beat.
 - Next: phase 5 (profiles with folder/command, SSH via system ssh, menus, renderer setting).
+- **Phase 5, profiles and polish: done.** (User went to bed and asked me to keep working; no
+  outward-facing steps taken.)
+  - Folder profiles: `tabby-local` validates working directories with `fs.statSync`, which the web
+    preload mocks so every folder was dropped. The host page now provides an `fs` stand-in that
+    treats paths as folders (the shell's own `cd` reports missing ones).
+  - acde's `cwd` event reports home-relative paths (`~/projects`); Tabby passes them to new tabs, and
+    quoting stopped `~` expanding. `startupInput` now expands `~` to `"$HOME"`, runs everything on one
+    line, and clears the screen once `cd` succeeds, so new tabs open clean.
+  - Command profiles: ` exec <cmd> <args>` after the `cd`; verified with a `bash -c` profile.
+  - Window menu bar on `acde:window` (`tabby-acde/src/menus.ts`): File (New terminal, Settings, Close
+    tab, Close window) and View (Split right, Split down, Toggle fullscreen), all via Tabby's public
+    services (`TerminalService.openTab`, `SplitTabComponent.splitTab`, `AppService`).
+  - Accessible names (upstream-friendly template change in `tabby-core`): toolbar buttons now carry
+    `aria-label` from their tooltip ("New terminal", "Profiles & connections", "Settings"), and tab
+    buttons are "Tab options" / "Close tab". Before, agents saw unnamed buttons and a "×".
+  - App icon fixed: `term` (acde warned that `terminal` is not one of its icon names).
+- Verified, driven by name through `acde act`: Projects folder profile opens in `~/projects`; a new
+  tab inherits `~/projects`; the command profile prints `command-profile-ok` and leaves a shell;
+  View › Split right gives two clean panes. No console errors. Screenshots in `docs/screenshots/`
+  (phase5-profile-folder, -inherited, -profile-command, -split).
+- Lessons: `acde dev` watches the project folder, so writing screenshots inside `acde-app/` triggers a
+  rebuild and reload mid-test (the window briefly disappears). Screenshots now go to `docs/screenshots/`.
+  Element refs change when tabs are restored, so tests must find elements by name, never by ref.
+- SSH: not built as a separate feature. A local profile with command `ssh` and args `[user@host]` runs
+  the system ssh through the same `exec` path (documented in PORTING.md); the sandbox has no network,
+  so it is untested. Waiting for the user's decision on whether that is enough for the demo.
+- For demos: tab recovery accumulates tabs across restarts (8 tabs now); reset the recovery state
+  before recording.
+- Next: phase 6, agent features (run requests from other apps, agent status badges, notifications).

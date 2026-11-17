@@ -47,6 +47,21 @@ function createConnector () {
 // Modules the plugin bundles require that Tabby's web preload does not provide: the acde modules
 // tabby-acde uses, and 'node:url', which the chunk loader of webpack 5.110's node target requires.
 function registerHostModules (tabby) {
+    // tabby-local checks working directories with fs.statSync and resolves them with fs.realpath,
+    // but a page has no file system. Treat every path as a folder: the shell's own `cd` reports a
+    // missing one. This replaces the web preload's fs mock, which made every folder invalid.
+    const folder = { isDirectory: () => true }
+    tabby.registerMock('fs', {
+        statSync: () => folder,
+        stat: (_path, callback) => callback(null, folder),
+        realpath: (path, callback) => callback(null, path),
+        realpathSync: (path) => path,
+        readdir: (_path, callback) => callback(null, []),
+        rmdirSync: () => null,
+        appendFile: (_path, _data, callback) => callback?.(null),
+        existsSync: () => false,
+        constants: {},
+    })
     tabby.registerModule('acde:terminal', { terminal })
     tabby.registerModule('acde:window', { window: acdeWindow })
     tabby.registerModule('node:url', {

@@ -5,7 +5,7 @@
   "type": "app",
   "id": "tabby",
   "label": "Tabby",
-  "icon": "terminal",
+  "icon": "term",
   "entry": "index.html",
   // terminal: local shells (acde:terminal). fs: Tabby's config in the app's private folder.
   "capabilities": {

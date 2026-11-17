@@ -54,6 +54,7 @@ title-bar(
                 )
                     button.btn.btn-secondary.btn-tab-bar(
                         [ngbTooltip]='button.label',
+                        [attr.aria-label]='button.label',
                         (click)='button.run && button.run()',
                         [fastHtmlBind]='button.icon'
                     )
@@ -66,6 +67,7 @@ title-bar(
                     button.btn.btn-secondary.btn-tab-bar(
                         [hidden]='activeTransfers.length == 0',
                         [ngbTooltip]='"File transfers"|translate',
+                        [attr.aria-label]='"File transfers"|translate',
                         ngbDropdownToggle
                     ) !{require('../icons/transfers.svg')}
                     transfers-menu(
@@ -86,6 +88,7 @@ title-bar(
                 )
                     button.btn.btn-secondary.btn-tab-bar(
                         [ngbTooltip]='button.label',
+                        [attr.aria-label]='button.label',
                         (click)='button.run && button.run()',
                         [fastHtmlBind]='button.icon'
                     )
@@ -93,6 +96,7 @@ title-bar(
                 button.btn.btn-secondary.btn-tab-bar.btn-update(
                     *ngIf='updatesAvailable',
                     [ngbTooltip]='"Update available - Click to install"|translate',
+                    [attr.aria-label]='"Update available - Click to install"|translate',
                     (click)='updater.update()'
                 ) !{require('../icons/gift.svg')}
 

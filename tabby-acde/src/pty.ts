@@ -16,20 +16,35 @@ function shellQuote (value: string): string {
     return `'${value.replace(/'/g, `'\\''`)}'`
 }
 
+// acde:terminal reports home-relative working directories ("~/projects"), and Tabby opens new tabs
+// in the current tab's directory, so a leading ~ must stay expandable by the shell.
+function shellPath (path: string): string {
+    if (path === '~') {
+        return '"$HOME"'
+    }
+    if (path.startsWith('~/')) {
+        return `"$HOME"/${shellQuote(path.slice(2))}`
+    }
+    return shellQuote(path)
+}
+
 /**
  * acde:terminal.open() always starts the user's default shell and takes no command or working
- * directory, so both are typed into the new shell. The leading space keeps the lines out of the
- * shell history where HISTCONTROL=ignorespace (the bash default on most distributions).
+ * directory, so both are typed into the new shell as one line. The screen is cleared once the
+ * directory change succeeds (a failed `cd` stays visible). The leading space keeps the line out of
+ * the shell history where HISTCONTROL=ignorespace (the bash default on most distributions).
  */
 export function startupInput (command: string, args: string[], cwd?: string): string {
-    const lines: string[] = []
+    const steps: string[] = []
     if (cwd) {
-        lines.push(` cd -- ${shellQuote(cwd)}`)
+        steps.push(`cd -- ${shellPath(cwd)} && clear`)
+    } else if (command) {
+        steps.push('clear')
     }
     if (command) {
-        lines.push(` exec ${[command, ...args].map(shellQuote).join(' ')}`)
+        steps.push(`exec ${[command, ...args].map(shellQuote).join(' ')}`)
     }
-    return lines.map(line => `${line}\r`).join('')
+    return steps.length ? ` ${steps.join('; ')}\r` : ''
 }
 
 /** A local shell running in an acde:terminal, in the shape tabby-local's session expects. */

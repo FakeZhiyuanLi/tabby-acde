@@ -43,7 +43,9 @@ declare module 'acde:window' {
         requestState (state: WindowState): void
         minimize (): Promise<void>
         close (): Promise<boolean>
+        requestAttention (): Promise<void>
         on (name: 'activate' | 'deactivate', handler: () => void): () => boolean
+        on (name: 'request', handler: (request: unknown) => void): () => boolean
     }
 
     export const window: AcdeWindow

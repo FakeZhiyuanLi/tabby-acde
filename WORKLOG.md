@@ -127,3 +127,32 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
 - For demos: tab recovery accumulates tabs across restarts (8 tabs now); reset the recovery state
   before recording.
 - Next: phase 6, agent features (run requests from other apps, agent status badges, notifications).
+- **Phase 6, agent features (the Extend part): core done.**
+  - Agent status (`tabby-acde/src/agents/detector.ts`, `agentStatus.ts`): a `TerminalDecorator` reads
+    every terminal's output, strips ANSI codes and looks for the phrases agent CLIs print: working
+    ("esc to interrupt") and waiting ("Do you want to proceed?", "Allow command", "(y/n)"...). Only
+    new output counts, so old lines do not re-trigger. States: working (blue tab), waiting (amber),
+    done after 4 s of quiet (green), back to idle when the tab is focused. Waiting and done raise a
+    system notification; waiting also calls `acde:window.requestAttention()` and the window title
+    shows "(N waiting)" (via `AcdeHostWindow`).
+  - Run requests (`agents/runRequests.ts`): `open('tabby', { kind: 'run', command, cwd, title })` from
+    any app or agent opens a titled tab in `cwd` and **types the command without running it**; the
+    user reviews it and presses Enter. Requests are validated (strings only, max 4,000 chars, no
+    control characters, so a newline cannot press Enter). `acde.config.jsonc` declares
+    `requests: ["run"]` and `open: ["tabby"]` (so a page or test can send Tabby a request).
+  - `scripts/demo-agent.sh`: a stand-in agent that prints working lines, asks "Do you want to proceed?",
+    and finishes after approval. No model calls, so demos and tests are offline and repeatable.
+- Verified in the sandbox:
+  1. demo-agent in a tab: title becomes "(1 waiting) ubuntu@acde-sandbox: ~/projects" while it asks,
+     the tab turns amber, then green after typing 1 + Enter and "✓ Done". Screenshots
+     `docs/screenshots/phase6-agent-{working,waiting,done}.png`.
+  2. Run request sent with `acde eval` (`import('acde:open')` then `open(...)`): tab "Agent: show recent
+     commits" opens in `~/projects` with the command typed but not run
+     (`phase6-run-request-staged.png`). A request with a newline in the command is rejected with a
+     console warning.
+  3. No console errors.
+- Not verifiable headless: whether system notifications appear (there is no desktop in the sandbox to
+  show them). The tab colour is a thin underline; making the state more visible is a polish item.
+- **Pitch lines from this phase:** "Any agent can hand Tabby a command, but only you can run it";
+  "Tabby tells you which agent needs you, even when its tab is in the background".
+- Next: phase 7, `acde test` end-to-end tests, `acde build` bundle, write-up, deck material.

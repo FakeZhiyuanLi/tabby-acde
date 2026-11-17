@@ -1,7 +1,10 @@
 import { NgModule } from '@angular/core'
 import { HostWindowService } from 'tabby-core'
 import { PTYInterface, ShellProvider } from 'tabby-local'
+import { TerminalDecorator } from 'tabby-terminal'
 
+import { AgentStatusDecorator } from './agents/agentStatus'
+import { AcdeRunRequests } from './agents/runRequests'
 import { AcdeHostWindow } from './hostWindow.service'
 import { AcdeMenus } from './menus'
 import { AcdePTYInterface } from './pty'
@@ -17,10 +20,12 @@ import { AcdeDefaultShellProvider } from './shells'
         { provide: HostWindowService, useClass: AcdeHostWindow },
         { provide: PTYInterface, useClass: AcdePTYInterface },
         { provide: ShellProvider, useClass: AcdeDefaultShellProvider, multi: true },
+        { provide: TerminalDecorator, useClass: AgentStatusDecorator, multi: true },
     ],
 })
 export default class AcdeModule {
-    constructor (menus: AcdeMenus) {
+    constructor (menus: AcdeMenus, runRequests: AcdeRunRequests) {
         menus.install()
+        runRequests.install()
     }
 }

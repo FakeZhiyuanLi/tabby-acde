@@ -29,6 +29,10 @@ New code (the port):
 - `tabby-acde/`: the platform plugin. Local shells on `acde:terminal`, a default shell provider,
   the window on `acde:window`, and a native menu bar (File, View). Loaded after `tabby-web`, whose
   browser services it keeps.
+- `tabby-acde/src/agents/`: the Dopame OS extension. Agent status for every terminal (working,
+  waiting, done; tab colour, notifications, "(N waiting)" in the title) and `run` requests that let
+  other apps and agents stage a command in a new tab for the user to run.
+- `scripts/demo-agent.sh`: a stand-in agent CLI for offline demos and tests.
 
 Upstream files changed (small fixes to Tabby's web build, both also useful upstream):
 
@@ -70,7 +74,9 @@ Host-level workarounds (in `acde-app`, no upstream change):
 | --- | --- |
 | `terminal` | Every local shell tab (`acde:terminal`) |
 | `fs` | Tabby's config file in the app's private folder |
-| `acde:window` (no capability needed) | Window title, fullscreen, minimize, close |
+| `acde:window` (no capability needed) | Window title, fullscreen, minimize, close, menu bar, attention |
+| `open: ["tabby"]` | A page or test can send Tabby a `run` request |
+| `requests: ["run"]` | Other apps and agents stage commands in a new tab |
 
 ## Profiles
 

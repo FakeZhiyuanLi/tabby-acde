@@ -8,12 +8,15 @@
   "icon": "term",
   "entry": "index.html",
   // terminal: local shells (acde:terminal). fs: Tabby's config in the app's private folder.
+  // open: only Tabby itself, so a page (or a test) can send Tabby a run request.
   "capabilities": {
     "terminal": true,
-    "fs": true
+    "fs": true,
+    "open": ["tabby"]
   },
   "optional": [],
   "services": [],
-  "requests": [],
+  // run: another app or agent hands Tabby a command; it is typed into a new tab for the user to run.
+  "requests": ["run"],
   "schemes": []
 }

@@ -156,3 +156,23 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
 - **Pitch lines from this phase:** "Any agent can hand Tabby a command, but only you can run it";
   "Tabby tells you which agent needs you, even when its tab is in the background".
 - Next: phase 7, `acde test` end-to-end tests, `acde build` bundle, write-up, deck material.
+- **Phase 7, tests, bundle and write-up: done (deck still to make).**
+  - `acde-app/e2e/tabby.e2e.ts`: 7 end-to-end tests (boot + named buttons; command in a local shell
+    writes a file in the session HOME; File › Settings; View › Split right; run request staged and
+    only run after Enter; run request with a newline rejected; demo agent sets "(1 waiting)" until
+    answered). **7/7 pass, 27 s for the suite.**
+  - First run: 4/7. Two root causes, both fixed:
+    1. acde callbacks (menu `onSelect`, `request` events, `acde:terminal` events) run outside
+       Angular's zone, so views did not update (Settings set the title but kept the old page; a run
+       request's tab did not appear). Every acde callback now goes through `NgZone.run()`.
+    2. `keyboard.type` delivered shifted characters out of order into xterm.js
+       (`> "$HOME/x"` became `" $HOME/x"`); tests now use `keyboard.insertText`.
+  - `acde check` passes; `acde build` produces `.acde/` (manifest + `web/`, 53 MB, **no native files**).
+    Packaged as `dist-artifacts/tabby-acde-1.0.238-acde.tar.gz` (19 MB, sha256 2ba8c904…744f; not in
+    git). The app now bootstraps Angular in production mode outside `acde dev`.
+  - Docs for the deliverable: `docs/WRITEUP.md` (project write-up with test table), `docs/DEMO.md`
+    (3-minute demo script with fallbacks), `docs/PLATFORM-FEEDBACK.md` (10 items, repro + suggestion
+    each), test recordings in `docs/recordings/` (animated PNGs).
+- Deliverables checklist now: repo (local fork, branch `acde`; public fork waits for the user's OK),
+  bundle (done), write-up with porting notes (done), pitch deck (next).
+- Next: pitch deck; a fresh clean-state demo recording; update the plan page.

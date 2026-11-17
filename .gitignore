@@ -40,3 +40,6 @@ crowdin.yml
 
 # built from tabby-uac/ by CI; see .github/workflows/build.yml
 extras/UAC.exe
+
+# Built bundles for delivery (see WORKLOG.md), not tracked
+dist-artifacts/

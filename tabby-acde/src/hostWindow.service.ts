@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core'
+import { Injectable, NgZone } from '@angular/core'
 import { HostWindowService } from 'tabby-core'
 import { window as acdeWindow } from 'acde:window'
 import { AgentStatusService } from './agents/agentStatus'
@@ -18,11 +18,11 @@ export class AcdeHostWindow extends HostWindowService {
         return acdeWindow.state === 'fullscreen'
     }
 
-    constructor (agents: AgentStatusService) {
+    constructor (agents: AgentStatusService, zone: NgZone) {
         super()
         this.windowShown.next()
         this.windowFocused.next()
-        acdeWindow.on('activate', () => this.windowFocused.next())
+        acdeWindow.on('activate', () => zone.run(() => this.windowFocused.next()))
         agents.waitingCount$.subscribe(count => {
             this.waitingAgents = count
             this.renderTitle()

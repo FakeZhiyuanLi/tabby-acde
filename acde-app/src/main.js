@@ -109,7 +109,9 @@ async function boot () {
         installedPlugins: await Promise.all(PLUGIN_NAMES.map(pluginInfo)),
         userPluginsPath: '/',
     }
-    await tabby.bootstrap({ packageModules, bootstrapData, debugMode: true, connector })
+    // acde dev runs Vite in development mode; acde build produces the production bundle, where Angular
+    // skips its development-only checks.
+    await tabby.bootstrap({ packageModules, bootstrapData, debugMode: import.meta.env.DEV, connector })
     console.log('tabby-acde: Tabby bootstrapped')
 }
 

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core'
+import { Injectable, NgZone } from '@angular/core'
 import { debounceTime, first } from 'rxjs'
 import { TerminalService } from 'tabby-local'
 import { window as acdeWindow } from 'acde:window'
@@ -44,17 +44,20 @@ export function parseRunRequest (request: unknown): RunRequest | null {
  */
 @Injectable({ providedIn: 'root' })
 export class AcdeRunRequests {
-    constructor (private terminal: TerminalService) { }
+    constructor (private terminal: TerminalService, private zone: NgZone) { }
 
     install (): void {
-        acdeWindow.on('request', (request: unknown) => {
-            const run = parseRunRequest(request)
-            if (!run) {
-                console.warn('tabby-acde: ignored a request that is not a valid run request', request)
-                return
-            }
-            this.stage(run).catch(error => console.error('tabby-acde: could not open a tab for a run request', error))
-        })
+        // acde delivers requests outside Angular's zone; the new tab only renders inside it.
+        acdeWindow.on('request', (request: unknown) => this.zone.run(() => this.handle(request)))
+    }
+
+    private handle (request: unknown): void {
+        const run = parseRunRequest(request)
+        if (!run) {
+            console.warn('tabby-acde: ignored a request that is not a valid run request', request)
+            return
+        }
+        this.stage(run).catch(error => console.error('tabby-acde: could not open a tab for a run request', error))
     }
 
     private async stage (run: RunRequest): Promise<void> {

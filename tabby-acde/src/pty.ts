@@ -1,3 +1,4 @@
+import { Injectable, NgZone } from '@angular/core'
 import { terminal as acdeTerminal, TerminalEvent } from 'acde:terminal'
 import { ChildProcess, PTYInterface, PTYProxy } from 'tabby-local'
 
@@ -151,11 +152,18 @@ export class AcdePTYProxy extends PTYProxy {
 }
 
 /** Replaces tabby-electron's node-pty bridge: every local shell is an acde:terminal. */
+@Injectable()
 export class AcdePTYInterface extends PTYInterface {
+    // acde calls back outside Angular's zone; running the events inside it lets Angular update the
+    // tab title, colour and other bindings that terminal output changes.
+    constructor (private zone: NgZone) {
+        super()
+    }
+
     async spawn (command: string, args: string[], options: SpawnOptions): Promise<PTYProxy> {
         const { id } = await acdeTerminal.open(options.cols ?? DEFAULT_COLUMNS, options.rows ?? DEFAULT_ROWS)
         const proxy = new AcdePTYProxy(id, options.cwd ?? null)
-        await acdeTerminal.subscribe(id, events => proxy.handleEvents(events))
+        await acdeTerminal.subscribe(id, events => this.zone.run(() => proxy.handleEvents(events)))
         const input = startupInput(command, args ?? [], options.cwd)
         if (input) {
             await acdeTerminal.input(id, input)

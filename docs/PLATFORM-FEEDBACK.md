@@ -118,3 +118,12 @@ then tries to type into an output line or clicks the canvas before finding the r
 
 **Suggested fix:** always list the focused element, even when it is transparent, or mark the
 focused input in the window line so `act type` has an obvious target.
+
+## 12. No font fallback for symbols on macOS
+
+**Seen:** in Tabby on acdert for macOS (Apple Silicon), characters the terminal font lacks, such as
+`✻` and `❯`, render as empty boxes instead of falling back to a system font that has them. Real
+agent CLIs (Claude Code among them) print exactly these symbols.
+
+**Suggested fix:** fall back through the system font list (Core Text cascade list on macOS) for
+missing glyphs, as browsers do.

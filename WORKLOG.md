@@ -205,3 +205,9 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
   text (real typing, IME and paste use other paths). Verified on macOS: `act type` + Enter ran once.
   Second agent run: 38 s, typing worked first time; it still had to search for the hidden input
   (platform feedback item 11). Real keyboard typing still needs a manual check.
+- **Hero demo scenario built (`demo/`).** Claude Code, limited to the acde MCP tools, drives Tabby:
+  runs the checkout tests, reads the failure from the screen, starts `fix-agent.sh` in its own tab
+  ("Fix agent"), reports that it is waiting and does not approve; the person approves; Claude
+  re-runs the tests (3/3). Dry run on macOS with a stand-in script for the person: 1 min 47 s, file
+  patched, title showed "(1 waiting)". Runbook in `demo/README.md`. Found: no glyph fallback on
+  macOS (platform feedback item 12); the fix agent now prints plain `*` and `>`.

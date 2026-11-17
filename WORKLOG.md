@@ -39,3 +39,12 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
 - Earlier the same day (before the fork): source review and runtime probes in acde 0.0.11.
   `eval`/`new Function`, custom elements + shadow DOM, WebGL 2, observers, clipboard and
   notifications all work; Web Workers missing; `acde:terminal.open()` takes no command/cwd/env.
+- **Phase 2, offline build: passed.** Installed dependencies for the root, `app/`, `web/` and the
+  seven kept plugins with `yarn install --ignore-scripts --frozen-lockfile` in the npm-only container
+  (Yarn 1.22.22, all OK), then symlinked the plugins into `node_modules` as `install-deps.mjs` does.
+  Added `scripts/build-acde.mjs` (typings + webpack for the kept packages only) and ran it in a node
+  container with `--network none`: typings OK; bundles for tabby-core, -settings, -terminal, -local,
+  -web, -community-color-schemes, -linkifier and the `web` entry compiled in 30 s, warnings only.
+- Cut `tabby-auto-sudo-password` too: it imports `tabby-ssh`.
+- Workarounds so far: none beyond skipping install scripts and native builds (the only upstream patch
+  is for electron-builder, not needed).

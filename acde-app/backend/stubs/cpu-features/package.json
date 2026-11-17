@@ -1,0 +1,7 @@
+{
+  "name": "cpu-features",
+  "version": "0.0.10",
+  "description": "Stand-in for the native cpu-features add-on: ssh2 loads it inside try/catch and works without it.",
+  "main": "index.js",
+  "license": "MIT"
+}

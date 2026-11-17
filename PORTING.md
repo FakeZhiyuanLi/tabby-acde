@@ -63,6 +63,7 @@ Host-level workarounds (in `acde-app`, no upstream change):
 | `node-pty` (via Electron IPC, `tabby-electron/src/pty.ts`) | yes | `acde:terminal` (`tabby-acde/src/pty.ts`) |
 | `native-process-working-directory` | yes | `acde:terminal` `cwd` events |
 | `ps-node`, `macos-native-processlist`, Windows process tree | yes | none: child-process info is stubbed |
+| `russh` (SSH, in `tabby-ssh`) | yes (Rust) | `ssh2` (pure JS) in the app backend, `acde-app/backend/` |
 | `fontmanager-redux`, `keytar` | yes | not needed for local shells |
 | Electron shell detection (`/etc/passwd`, registry) | no | `AcdeDefaultShellProvider`: the shell acde starts |
 | Electron window (`ElectronHostWindow`) | no | `acde:window` (`tabby-acde/src/hostWindow.service.ts`) |
@@ -87,9 +88,35 @@ be a local profile with command `ssh` and args `[user@host]`, using the system s
 
 ## Cut, and why
 
-- Native SSH and SFTP (`russh`, a Rust module), serial, telnet: native code or raw sockets.
+- Serial and telnet: serial ports and raw sockets.
+- SFTP, port forwarding, jump hosts and X11 from `tabby-ssh`: its UI is tied to the `russh` API.
+  SSH shell sessions are back through the backend (below).
 - Plugin manager, auto-updater, docking, touch bar, Windows UAC: no equivalent on Dopame OS.
 
 ## Platform feedback for Return AI
 
 See `WORKLOG.md` for the running list.
+
+## SSH through the acde backend
+
+A page cannot open TCP connections, but an acde app can have a Node.js or Bun backend, and talking
+to other hosts needs no capability. `acde-app/backend/` runs SSH sessions with `ssh2`, a pure-JS
+client, in place of the native `russh` that `tabby-ssh` uses:
+
+- A local profile with command `acde-ssh` and one argument (a host or `~/.ssh/config` alias) opens an
+  SSH tab instead of a shell (`tabby-acde/src/ssh.ts`). Tabby's tabs, splits and agent status work
+  on it unchanged.
+- Hosts resolve through `~/.ssh/config` (HostName, User, Port, IdentityFile, HostKeyAlias). Host
+  keys must already be in `~/.ssh/known_hosts` (plain or hashed); unknown, changed or revoked keys
+  are refused.
+- Authentication tries "none" (Tailscale SSH), then an SSH agent if the backend has one, then key
+  files without a passphrase. acde starts backends with a clean environment, so there is usually no
+  agent. Passphrase and password prompts are not implemented yet.
+- Output streams to the page in a `fetch` response; keystrokes and resizes are small POSTs (acde
+  Node.js backends have no WebSocket upgrade).
+- `cpu-features`, an optional native add-on of `ssh2`, is replaced by a stub
+  (`backend/stubs/cpu-features`). `backend/cjsGlobals.js` defines `__dirname` and `__filename`,
+  which `ssh2` reads and the ES module bundle that acde builds does not have.
+
+Verified on macOS (Apple Silicon) against three Linux servers over Tailscale. Config and host key
+checks have unit tests (`node --test backend/ssh.test.js`). Not tested in the offline sandbox.

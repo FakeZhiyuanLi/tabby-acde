@@ -216,3 +216,9 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
   agent. Agent status works over SSH: a waiting prompt printed on rack2 turned its tab amber and
   the title showed "(1 waiting)" while another tab was focused. Next: step B, pure-JS SSH in the
   acde backend.
+- **SSH step B (pure-JS SSH in the acde backend): works on macOS.** `acde-app/backend/` runs `ssh2`
+  sessions; profiles with command `acde-ssh` open them in Tabby tabs. Verified against rack1, rack2
+  and rack-laptop over Tailscale: connect, host key check against known_hosts, typing, initial size
+  and live resize, agent status ("(1 waiting)"). Build fixes: a stub for the native `cpu-features`
+  add-on, and `__dirname` for the ES module bundle. 8 backend unit tests; 7/7 e2e still pass in the
+  sandbox after the PTY refactor (shared `BufferedPTYProxy`).

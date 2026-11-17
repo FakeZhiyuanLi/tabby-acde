@@ -9,7 +9,11 @@
     "test": "acde test"
   },
   "devDependencies": {
-    "@dopame/acde-api": "file:/opt/acde-dist/0.0.11/acde-api-0.0.11.tar.gz",
+    "@dopame/acde-api": "https://pkgs.dopame.ai/acde/0.0.11/acde-api-0.0.11.tar.gz",
     "vite": "8.3.8"
+  },
+  "dependencies": {
+    "ssh2": "^1.17.0",
+    "cpu-features": "file:backend/stubs/cpu-features"
   }
 }

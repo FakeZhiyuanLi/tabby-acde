@@ -38,3 +38,16 @@ acde dev
 
 Dry run on macOS (headless, with a script standing in for the person): about 1 minute 45 seconds
 end to end.
+
+## Take 2: agents on your servers
+
+The same project and fix agent are in `~/tabby-demo` on rack1 and rack2. Claude opens each server
+in a Tabby tab over pure-JS SSH (`ssh2` in Tabby's acde backend, no `ssh` program), starts a fix
+agent on each, and tells you which servers are waiting; the title shows "(2 waiting)".
+
+1. Reset both servers: `for h in rack1 rack2; do ssh $h tabby-demo/reset.sh; done`, then restart
+   Tabby with no saved tabs as above.
+2. In the Claude Code window, type: **Checkout tests are failing on rack1 and rack2. Use Tabby to
+   open both servers, put a fix agent on each, and tell me which ones need me. Once they are done,
+   check the tests on both again.**
+3. When both Fix agent tabs turn amber, approve each one (`1`, Enter).

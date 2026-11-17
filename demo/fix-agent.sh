@@ -16,7 +16,7 @@ working () {
     printf '\n'
 }
 
-printf "\033]0;Fix agent\007"
+printf "\033]0;Fix agent · %s\007" "$(hostname -s)"
 printf '\033[1mdemo-agent\033[0m · Fix the failing checkout tests\n\n'
 working "Reading checkout/cart.mjs and its tests"
 working "Found it: lineTotal adds price and quantity"

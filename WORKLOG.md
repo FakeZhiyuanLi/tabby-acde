@@ -222,3 +222,8 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
   and live resize, agent status ("(1 waiting)"). Build fixes: a stub for the native `cpu-features`
   add-on, and `__dirname` for the ES module bundle. 8 backend unit tests; 7/7 e2e still pass in the
   sandbox after the PTY refactor (shared `BufferedPTYProxy`).
+- **Demo take 2: agents on two servers over pure-JS SSH (dry run passed).** The demo project is also
+  in `~/tabby-demo` on rack1 and rack2. Claude Code (acde mcp only) opened `rack1 · JS SSH` and
+  `rack2 · JS SSH`, started a fix agent in each ("Fix agent · <server>" tabs), the title showed
+  "(2 waiting)", it did not approve, a stand-in script approved both, and it re-ran the tests: 3/3
+  on each server. 58 s end to end.

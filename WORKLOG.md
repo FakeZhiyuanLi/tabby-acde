@@ -211,3 +211,8 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
   re-runs the tests (3/3). Dry run on macOS with a stand-in script for the person: 1 min 47 s, file
   patched, title showed "(1 waiting)". Runbook in `demo/README.md`. Found: no glyph fallback on
   macOS (platform feedback item 12); the fix agent now prints plain `*` and `>`.
+- **SSH step A (system ssh profiles) on macOS: works.** Local profiles `rack1`, `rack2`, `rack-laptop`
+  (group Servers, command `ssh <alias>`) connect over Tailscale with the Mac SSH config, keys and
+  agent. Agent status works over SSH: a waiting prompt printed on rack2 turned its tab amber and
+  the title showed "(1 waiting)" while another tab was focused. Next: step B, pure-JS SSH in the
+  acde backend.

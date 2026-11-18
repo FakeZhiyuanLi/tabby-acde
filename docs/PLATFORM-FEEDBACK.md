@@ -152,3 +152,22 @@ built backend is run by hand.
 
 **Suggested fix:** inject `__dirname`/`__filename` shims for CommonJS modules in the bundle, and
 print the backend's stderr in `acde dev` when it exits during start.
+
+## 15. Backends cannot listen on a TCP port
+
+**Seen:** acde turns every backend `listen()` into a Unix socket in a private directory. That keeps
+apps apart, but it rules out anything that must accept local TCP connections: Tabby's local and
+dynamic (SOCKS) SSH port forwarding, dev servers a user wants to open in a browser, local proxies.
+
+**Suggested fix:** a capability (for example `"listen": ["127.0.0.1"]`) that lets an app open a
+loopback TCP port the user can see in the app's permissions, with the private socket as the default.
+
+## 16. Backends start without the user's SSH agent
+
+**Seen:** a backend's environment is built from scratch, so `SSH_AUTH_SOCK` is missing even when the
+user has an agent. Tabby's SSH plugin then cannot sign in with keys the agent holds (often the only
+place they are usable, for example with a macOS Keychain passphrase). The backend works around it
+with `launchctl getenv SSH_AUTH_SOCK` on macOS; there is no equivalent on Linux.
+
+**Suggested fix:** pass `SSH_AUTH_SOCK` through like the proxy variables, or offer it as a
+capability.

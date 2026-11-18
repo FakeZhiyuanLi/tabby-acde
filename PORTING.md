@@ -63,7 +63,7 @@ Host-level workarounds (in `acde-app`, no upstream change):
 | `node-pty` (via Electron IPC, `tabby-electron/src/pty.ts`) | yes | `acde:terminal` (`tabby-acde/src/pty.ts`) |
 | `native-process-working-directory` | yes | `acde:terminal` `cwd` events |
 | `ps-node`, `macos-native-processlist`, Windows process tree | yes | none: child-process info is stubbed |
-| `russh` (SSH, in `tabby-ssh`) | yes (Rust) | `ssh2` (pure JS) in the app backend, `acde-app/backend/` |
+| `russh` (SSH, in `tabby-ssh`) | yes (Rust) | a stand-in with the same API (`acde-app/src/russh.js`) running `ssh2` (pure JS) in the app backend |
 | `fontmanager-redux`, `keytar` | yes | not needed for local shells |
 | Electron shell detection (`/etc/passwd`, registry) | no | `AcdeDefaultShellProvider`: the shell acde starts |
 | Electron window (`ElectronHostWindow`) | no | `acde:window` (`tabby-acde/src/hostWindow.service.ts`) |
@@ -120,3 +120,38 @@ client, in place of the native `russh` that `tabby-ssh` uses:
 
 Verified on macOS (Apple Silicon) against three Linux servers over Tailscale. Config and host key
 checks have unit tests (`node --test backend/ssh.test.js`). Not tested in the offline sandbox.
+
+## Tabby's own SSH plugin on a russh stand-in
+
+`tabby-ssh` (3,617 lines) is built and loaded unchanged. Its only native dependency is `russh`, a
+Rust module it loads by name at run time, so the host page registers a stand-in with the same API
+under that name (`acde-app/src/russh.js`). Each connection runs in the app's acde backend on
+`ssh2` (`backend/russhBridge.js`, `backend/russhSftp.js`, routes in `backend/russhRoutes.js`); the
+page talks to it with `fetch` and one NDJSON event stream per connection.
+
+Ported (Tabby's own UI): SSH profiles and tabs, Tabby's host key dialog and known hosts, sign-in with
+none, password, private keys with passphrases, keyboard-interactive and the SSH agent, the SFTP panel
+(browse, upload, download, rename, permissions), jump hosts, and remote port forwarding.
+
+Host pieces the plugin expects from Node.js:
+
+- `process.env.SSH_AUTH_SOCK`: acde starts backends with a clean environment, so the backend asks
+  launchd (`launchctl getenv SSH_AUTH_SOCK`) and the page sets it at start (`src/sshHost.js`).
+- `fs.stat` / `fs/promises.stat`: the backend answers with the file type only, never contents
+  (used for the agent socket check).
+- `net.Socket` (`src/net.js`): outgoing sockets opened by the backend (`backend/netSockets.js`), which
+  tabby-ssh uses to connect a remote forward to its local target.
+
+Not ported: local and dynamic (SOCKS) forwarding, because acde turns every backend `listen()` into a
+private Unix socket that nothing else can reach (`net.createServer` throws with that reason); proxy
+commands and SOCKS/HTTP proxies (skipped); X11 forwarding and Pageant (no X server or Pageant).
+
+Tests: `acde-app/backend/test/run.sh` (rack-laptop, Podman) starts two throwaway OpenSSH servers in
+a private pod with no published ports and per-run credentials, and runs 8 integration tests against
+the bridge: host keys and rejecting them, none/password, keyboard-interactive, a passphrase-protected
+key, an SFTP round trip, a jump host, a remote forward and a backend socket. Verified by hand in
+Tabby on macOS against three servers over Tailscale: agent sign-in, host key dialogs (fingerprints
+checked against the Mac's known_hosts), SFTP listing, a download and an upload (byte-identical),
+and a jump host (rack2 reached through rack1).
+
+The simpler `acde-ssh` profiles (one shell over `backend/sessions.js`) remain as a lighter option.

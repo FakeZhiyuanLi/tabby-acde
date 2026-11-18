@@ -253,3 +253,7 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
   dynamic forwarding need a TCP listener, and acde turns backend listen() into a private Unix
   socket. The test pod now runs a second sshd on 2222 as a jump host; 8/8 integration tests pass
   (jump host with the target's own host key, remote forward ping/pong, backend socket), and 7/7 e2e.
+- **Full SSH port: done (without proxies, by choice).** Upload and download through Tabby's SFTP
+  panel checked on rack1: both byte-identical (SHA-256). Tabby saved the download straight to
+  ~/Downloads, without a save dialog. Porting notes updated; platform feedback items 15 (backends
+  cannot listen on TCP: no local or dynamic forwarding) and 16 (no SSH agent in backends).

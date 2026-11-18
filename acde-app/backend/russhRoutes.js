@@ -63,7 +63,7 @@ async function socketOp (id, op, request) {
         return json({ error: 'no such socket' }, 404)
     }
     if (op === 'events') {
-        return new Response(socket.events(), { headers: { 'Content-Type': 'application/x-ndjson' } })
+        return new Response(socket.eventStream(), { headers: { 'Content-Type': 'application/x-ndjson' } })
     }
     if (op === 'write') {
         await socket.write(Buffer.from(await request.arrayBuffer()))
@@ -123,7 +123,7 @@ async function sftpOp (connection, channel, op, request) {
 
 async function connectionOp (connection, action, request) {
     if (action === 'events') {
-        return new Response(connection.events(), { headers: { 'Content-Type': 'application/x-ndjson' } })
+        return new Response(connection.eventStream(), { headers: { 'Content-Type': 'application/x-ndjson' } })
     }
     if (action === 'host-key') {
         connection.answerHostKey((await body(request)).accept)
@@ -153,21 +153,30 @@ async function connectionOp (connection, action, request) {
         }
         return json({ port: await connection.forwardTCPPort(address, port) })
     }
-    connection.end()
-    return new Response(null, { status: 204 })
+    if (action === 'disconnect') {
+        connection.end()
+        return new Response(null, { status: 204 })
+    }
+    return json({ error: 'not found' }, 404)
 }
 
 /** Handles /api/russh/*; null for other paths. */
 export async function handleRussh (request, pathname) {
-    if (!pathname.startsWith('/api/russh/') || request.method !== 'POST' && request.method !== 'GET') {
+    if (!pathname.startsWith('/api/russh/')) {
         return null
+    }
+    // Event streams are read with GET (and only once); everything else is a POST.
+    const expected = pathname.endsWith('/events') || pathname === '/api/russh/agent' ? 'GET' : 'POST'
+    if (request.method !== expected) {
+        return json({ error: `use ${expected}` }, 405)
     }
     try {
         if (pathname === '/api/russh/agent') {
             return json({ path: await findAgentSocket() })
         }
         if (pathname === '/api/russh/stat') {
-            return json(await statPath(String((await body(request)).path ?? '')))
+            const path = String((await body(request)).path ?? '')
+            return json(path.startsWith('/') ? await statPath(path) : { exists: false, code: 'EINVAL' })
         }
         if (pathname === '/api/russh/keys/parse') {
             const { data, passphrase } = await body(request)
@@ -179,7 +188,10 @@ export async function handleRussh (request, pathname) {
         }
         if (pathname === '/api/russh/sockets') {
             const { host, port } = await body(request)
-            return json({ id: openSocket(String(host), Number(port)).id })
+            if (typeof host !== 'string' || !host || !Number.isInteger(port) || port < 1 || port > 65535) {
+                return json({ error: 'host must be a name or address and port a number from 1 to 65535' }, 400)
+            }
+            return json({ id: openSocket(host, port).id })
         }
         const socketMatch = pathname.match(SOCKET_PATH)
         if (socketMatch) {

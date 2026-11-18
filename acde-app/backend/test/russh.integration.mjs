@@ -27,7 +27,7 @@ function eventReader (connection) {
     const seen = []
     const waiters = []
     ;(async () => {
-        const reader = connection.events().getReader()
+        const reader = connection.eventStream().getReader()
         const decoder = new TextDecoder()
         let buffered = ''
         for (;;) {
@@ -216,7 +216,7 @@ test('a remote forward brings the server-side connection back as a channel', asy
 
 test('a backend socket for the page connects and reads', async () => {
     const socket = openSocket('127.0.0.1', 22)
-    const reader = socket.events().getReader()
+    const reader = socket.eventStream().getReader()
     const decoder = new TextDecoder()
     let text = ''
     while (!text.includes('"data"')) {
@@ -227,4 +227,20 @@ test('a backend socket for the page connects and reads', async () => {
     const data = JSON.parse(text.split('\n').find(line => line.includes('"data"'))).data
     assert.match(Buffer.from(data, 'base64').toString(), /^SSH-2\.0-/)
     socket.destroy()
+})
+
+test('dismissing a keyboard-interactive prompt still lets password sign-in work', async () => {
+    const { connection } = await open()
+    await connection.handshake
+    const prompt = await connection.authenticate({ type: 'keyboard-interactive', username: USER })
+    assert.equal(prompt.result, 'infoRequest')
+    const result = await connection.authenticate({ type: 'password', username: USER, password: TEST_PASSWORD })
+    assert.equal(result.result, 'success')
+    connection.end()
+})
+
+test('closing a connection answers a handshake that is still pending', async () => {
+    const connection = connect({ kind: 'socket', address: ADDRESS }, {})
+    connection.end()
+    await assert.rejects(connection.handshake, /closed/)
 })

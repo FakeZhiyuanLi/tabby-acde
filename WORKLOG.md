@@ -257,3 +257,22 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
   panel checked on rack1: both byte-identical (SHA-256). Tabby saved the download straight to
   ~/Downloads, without a save dialog. Porting notes updated; platform feedback items 15 (backends
   cannot listen on TCP: no local or dynamic forwarding) and 16 (no SSH agent in backends).
+- **Review and distribution pass.** A high-effort code review of the whole port (21 commits) found 10
+  issues; all fixed, with regression tests:
+  - Run requests: `cwd` and `title` are now checked for control characters like `command` (a `cwd`
+    with Ctrl-U and a carriage return could run a command without the user pressing Enter), and
+    `startupInput` refuses control characters itself; its steps are joined with `&&`, so a profile
+    command does not run when `cd` fails.
+  - SSH bridge: a closed connection answers pending handshake and sign-in requests; a dismissed
+    keyboard-interactive prompt no longer blocks the next method; Tabby's algorithm choices are
+    applied (cut to what ssh2 supports); a failed start no longer leaks a connection.
+  - Routes: GET only for event streams and POST otherwise; `disconnect` only by name; `stat` for
+    absolute paths only; socket host and port checked; one reader per event stream (shared
+    `backend/eventQueue.js`). Page writes report their own failure without blocking later writes.
+  - Simple SSH tabs: a clear message when no user name is configured, no leaked sessions.
+  - Agent status: a handled approval prompt no longer keeps the tab amber.
+- **Ready for other engineers:** `docs/GETTING-STARTED.md`; `scripts/install-acde-deps.mjs` (one
+  command, install scripts off) and `scripts/acde-plugins.mjs`; the app's dependencies pinned with a
+  committed `acde-app/package-lock.json`; the demo is configured per checkout (`demo/configure.sh`,
+  `demo/setup-servers.sh`). Clean-room check on rack-laptop: dependency install, full offline build,
+  `npm ci` from the lockfile, unit 9/9, SSH integration 10/10, e2e 8/8; Tabby SSH re-checked on macOS.

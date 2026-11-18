@@ -49,8 +49,10 @@ export class AcdeSSHPTYProxy extends BufferedPTYProxy {
 
     // Keystrokes are sent one request after another, so they arrive in order.
     async write (data: Buffer): Promise<void> {
-        this.writes = this.writes.then(() => this.post('input', new Uint8Array(data), 'application/octet-stream'))
-        await this.writes
+        const sent = this.writes.then(() => this.post('input', new Uint8Array(data), 'application/octet-stream'))
+        // A failed write is reported to its caller only, so later keystrokes still go out.
+        this.writes = sent.catch(() => null)
+        await sent
     }
 
     async kill (_signal?: string): Promise<void> {
@@ -65,7 +67,10 @@ export class AcdeSSHPTYProxy extends BufferedPTYProxy {
         if (this.closed) {
             return
         }
-        await fetch(`${SESSIONS_URL}/${this.id}/${action}`, { method: 'POST', headers: { 'Content-Type': contentType }, body })
+        const response = await fetch(`${SESSIONS_URL}/${this.id}/${action}`, { method: 'POST', headers: { 'Content-Type': contentType }, body })
+        if (!response.ok) {
+            throw new Error(`SSH ${action} failed (${response.status})`)
+        }
     }
 
     // acde delivers the stream outside Angular's zone; running the output inside it lets Angular

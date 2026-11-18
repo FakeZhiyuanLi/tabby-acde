@@ -82,6 +82,10 @@ class Session {
     connect () {
         const { target } = this
         const keyHost = target.hostKeyAlias ?? target.hostname
+        if (!target.user) {
+            this.end(`No user name for ${target.alias}: add a User line for it to ~/.ssh/config`)
+            return
+        }
         this.note(`Connecting to ${target.user}@${target.hostname}:${target.port} with pure-JS SSH (ssh2) in the acde backend`)
         const methods = authMethods(target)
         this.client
@@ -133,6 +137,10 @@ class Session {
 
     /** A ReadableStream of everything the session prints, until it ends. */
     output () {
+        if (this.streaming) {
+            throw new Error('this session already has an output reader')
+        }
+        this.streaming = true
         return new ReadableStream({
             pull: async controller => {
                 while (!this.queue.length && !this.closed) {
@@ -152,7 +160,11 @@ class Session {
 export function openSession (alias, cols, rows) {
     const session = new Session(alias, cols, rows)
     sessions.set(session.id, session)
-    session.connect()
+    try {
+        session.connect()
+    } catch (failure) {
+        session.end(`SSH error: ${failure instanceof Error ? failure.message : String(failure)}`)
+    }
     return session
 }
 

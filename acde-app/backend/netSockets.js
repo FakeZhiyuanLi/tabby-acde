@@ -3,13 +3,14 @@
 import { randomUUID } from 'node:crypto'
 import { Socket } from 'node:net'
 
+import { EventQueue } from './eventQueue.js'
+
 const sockets = new Map()
 
 class PageSocket {
     constructor (host, port) {
         this.id = randomUUID()
-        this.queue = []
-        this.wake = null
+        this.events = new EventQueue()
         this.closed = false
         this.socket = new Socket()
             .on('connect', () => this.emit({ type: 'connect' }))
@@ -21,8 +22,7 @@ class PageSocket {
     }
 
     emit (event) {
-        this.queue.push(JSON.stringify(event) + '\n')
-        this.wake?.()
+        this.events.push(event)
     }
 
     finish () {
@@ -31,25 +31,13 @@ class PageSocket {
         }
         this.emit({ type: 'close' })
         this.closed = true
-        this.wake?.()
+        this.events.close()
         sockets.delete(this.id)
     }
 
-    events () {
-        const encoder = new TextEncoder()
-        return new ReadableStream({
-            pull: async controller => {
-                while (!this.queue.length && !this.closed) {
-                    await new Promise(resolve => { this.wake = resolve })
-                }
-                if (this.queue.length) {
-                    controller.enqueue(encoder.encode(this.queue.splice(0).join('')))
-                } else {
-                    controller.close()
-                }
-            },
-            cancel: () => this.socket.destroy(),
-        })
+    /** The socket's event stream; it has one reader, and destroys the socket when cancelled. */
+    eventStream () {
+        return this.events.stream(() => this.socket.destroy())
     }
 
     write (data) {

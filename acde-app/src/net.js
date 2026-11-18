@@ -100,7 +100,7 @@ export class Socket extends Emitter {
     }
 
     end () {
-        this.writes = this.writes.then(() => this.send('end'))
+        this.writes = this.writes.then(() => this.send('end')).catch(() => null)
         return this
     }
 
@@ -108,7 +108,7 @@ export class Socket extends Emitter {
         if (error) {
             this.emit('error', error)
         }
-        this.writes = this.writes.then(() => this.send('destroy'))
+        this.writes = this.writes.then(() => this.send('destroy')).catch(() => null)
         return this
     }
 
@@ -119,7 +119,10 @@ export class Socket extends Emitter {
         if (!this.id) {
             return
         }
-        await fetch(`${API}/${this.id}/${op}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body })
+        const response = await fetch(`${API}/${this.id}/${op}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body })
+        if (!response.ok) {
+            throw new Error(`socket ${op} failed (${response.status})`)
+        }
     }
 }
 

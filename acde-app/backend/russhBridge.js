@@ -5,7 +5,9 @@
 // (failure) or a keyboard-interactive prompt. Everything the server sends arrives as NDJSON events.
 import { createHash, randomUUID } from 'node:crypto'
 import ssh2 from 'ssh2'
+import ssh2Constants from 'ssh2/lib/protocol/constants.js'
 
+import { EventQueue } from './eventQueue.js'
 import { SftpSession } from './russhSftp.js'
 
 const { Client, utils } = ssh2
@@ -13,6 +15,8 @@ const { Client, utils } = ssh2
 // person answering Tabby's host key, password and passphrase dialogs.
 const READY_TIMEOUT_MS = 10 * 60 * 1000
 const SECONDS = 1000
+// PAM usually re-prompts a few times before the server fails the method.
+const MAX_ABANDON_ROUNDS = 5
 const connections = new Map()
 
 function keyAlgorithm (blob) {
@@ -22,6 +26,28 @@ function keyAlgorithm (blob) {
 
 function fingerprint (blob) {
     return 'SHA256:' + createHash('sha256').update(blob).digest('base64').replace(/=+$/, '')
+}
+
+// Tabby's algorithm settings name the algorithms to offer, in russh's naming; ssh2 rejects names it
+// does not support, so the lists are cut to ssh2's. An empty result keeps ssh2's defaults.
+const SUPPORTED = {
+    kex: ssh2Constants.SUPPORTED_KEX,
+    serverHostKey: ssh2Constants.SUPPORTED_SERVER_HOST_KEY,
+    cipher: ssh2Constants.SUPPORTED_CIPHER,
+    hmac: ssh2Constants.SUPPORTED_MAC,
+    compress: ssh2Constants.SUPPORTED_COMPRESSION,
+}
+
+export function preferredAlgorithms (preferred) {
+    const wanted = { kex: preferred?.kex, serverHostKey: preferred?.key, cipher: preferred?.ciphers, hmac: preferred?.mac, compress: preferred?.compression }
+    const algorithms = {}
+    for (const [name, list] of Object.entries(wanted)) {
+        const usable = (Array.isArray(list) ? list : []).filter(algorithm => SUPPORTED[name].includes(algorithm))
+        if (usable.length) {
+            algorithms[name] = usable
+        }
+    }
+    return algorithms
 }
 
 function splitAddress (address) {
@@ -36,8 +62,7 @@ class Connection {
     constructor () {
         this.id = randomUUID()
         this.client = new Client()
-        this.queue = []
-        this.wake = null
+        this.events = new EventQueue()
         this.closed = false
         this.channels = new Map()
         this.sftpSessions = new Map()
@@ -51,25 +76,12 @@ class Connection {
     }
 
     emit (event) {
-        this.queue.push(JSON.stringify(event) + '\n')
-        this.wake?.()
+        this.events.push(event)
     }
 
-    events () {
-        const encoder = new TextEncoder()
-        return new ReadableStream({
-            pull: async controller => {
-                while (!this.queue.length && !this.closed) {
-                    await new Promise(resolve => { this.wake = resolve })
-                }
-                if (this.queue.length) {
-                    controller.enqueue(encoder.encode(this.queue.splice(0).join('')))
-                } else {
-                    controller.close()
-                }
-            },
-            cancel: () => this.end(),
-        })
+    /** The connection's event stream; it has one reader, and ends the connection when cancelled. */
+    eventStream () {
+        return this.events.stream(() => this.end())
     }
 
     // A socket address, or (for a jump host) a forwarded channel of another connection.
@@ -104,6 +116,7 @@ class Connection {
                 // ssh2 requires a username up front; russh only learns it with the first auth
                 // method, and every method below carries its own username, which ssh2 uses.
                 username: 'russh-stand-in',
+                algorithms: preferredAlgorithms(config?.preferred),
                 readyTimeout: READY_TIMEOUT_MS,
                 keepaliveInterval: (config?.keepaliveIntervalSeconds ?? 0) * SECONDS,
                 keepaliveCountMax: config?.keepaliveCountMax ?? 3,
@@ -134,10 +147,13 @@ class Connection {
         waiter?.(outcome)
     }
 
-    authenticate (method) {
+    async authenticate (method) {
+        if (!this.authCallback && this.keyboardFinish) {
+            await this.abandonKeyboardInteractive()
+        }
         const next = this.authCallback
         if (!next) {
-            return Promise.resolve({ result: 'error', message: 'not waiting for authentication' })
+            return { result: 'error', message: 'not waiting for authentication' }
         }
         this.authCallback = null
         return new Promise(resolve => {
@@ -163,6 +179,7 @@ class Connection {
                 username,
                 prompt: (name, instructions, _lang, prompts, finish) => {
                     this.keyboardFinish = finish
+                    this.keyboardPromptCount = prompts.length
                     this.settleAuth({ result: 'infoRequest', name, instructions, prompts: prompts.map(p => ({ prompt: p.prompt, echo: Boolean(p.echo) })) })
                 },
             }
@@ -180,6 +197,15 @@ class Connection {
             this.authWaiter = resolve
             finish(responses)
         })
+    }
+
+    // Tabby moves on to another method when the person dismisses a keyboard-interactive prompt, but
+    // ssh2 still waits for answers: answer each prompt with an empty string (one answer per prompt, or
+    // the server rejects the reply) until the server gives up on this method.
+    async abandonKeyboardInteractive () {
+        for (let round = 0; round < MAX_ABANDON_ROUNDS && this.keyboardFinish; round++) {
+            await this.continueKeyboardInteractive(new Array(this.keyboardPromptCount ?? 0).fill(''))
+        }
     }
 
     openSessionChannel () {
@@ -341,8 +367,13 @@ class Connection {
         }
         this.sftpSessions.clear()
         this.emit({ type: 'disconnect' })
-        this.wake?.()
+        this.events.close()
+        // Requests still waiting on the handshake, a sign-in step or a host key get an answer.
+        this.handshakeFailed(new Error('the connection closed'))
+        this.settleAuth({ result: 'error', message: 'the connection closed' })
+        this.answerHostKey(false)
         this.client.end()
+        this.client.destroy?.()
         connections.delete(this.id)
     }
 }
@@ -388,8 +419,8 @@ export function parseKey (data, passphrase) {
 /** Starts connecting; the page answers the host key from the event stream, then awaits the handshake. */
 export function connect (transport, config) {
     const connection = new Connection()
-    connections.set(connection.id, connection)
     connection.start(transport, config)
+    connections.set(connection.id, connection)
     return connection
 }
 

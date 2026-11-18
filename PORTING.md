@@ -1,5 +1,7 @@
 # Porting notes: Tabby on Dopame OS
 
+To build, run and test it, see [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
+
 This branch ports [Tabby](https://github.com/Eugeny/tabby) to Dopame OS using the acde toolkit.
 Everything outside `tabby-acde/`, `acde-app/`, `scripts/build-acde.mjs`, `WORKLOG.md` and this
 file is upstream Tabby code.

@@ -54,11 +54,12 @@ export class AgentStatusService {
         if (!tracked) {
             return
         }
-        const text = tracked.tail + stripAnsi(data)
+        const previous = tracked.tail
+        const text = previous + stripAnsi(data)
         tracked.tail = text.slice(-CONTEXT_CHARS)
         tracked.agent = tracked.agent ?? agentName(text)
 
-        const signal = lastSignal(text)
+        const signal = lastSignal(text, previous.length)
         if (signal) {
             this.setState(terminal, tracked, signal)
         }

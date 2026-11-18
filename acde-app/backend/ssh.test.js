@@ -89,3 +89,18 @@ test('an unlisted host or a missing file is unknown', () => {
     assert.equal(checkHostKey('rack1', 22, KEY, known), 'unknown')
     assert.equal(checkHostKey('rack1', 22, KEY, join(dir, 'missing')), 'unknown')
 })
+
+test("Tabby's algorithm choices are cut to what ssh2 supports, keeping their order", async () => {
+    const { preferredAlgorithms } = await import('./russhBridge.js')
+    const algorithms = preferredAlgorithms({
+        kex: ['not-a-kex', 'curve25519-sha256'],
+        key: ['ssh-ed25519', 'rsa-sha2-512'],
+        ciphers: ['aes256-gcm@openssh.com', 'made-up-cipher'],
+        mac: ['made-up-mac'],
+    })
+    assert.deepEqual(algorithms.kex, ['curve25519-sha256'])
+    assert.deepEqual(algorithms.serverHostKey, ['ssh-ed25519', 'rsa-sha2-512'])
+    assert.deepEqual(algorithms.cipher, ['aes256-gcm@openssh.com'])
+    assert.equal(algorithms.hmac, undefined, 'nothing usable: ssh2 keeps its defaults')
+    assert.deepEqual(preferredAlgorithms(undefined), {})
+})

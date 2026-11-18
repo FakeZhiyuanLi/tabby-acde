@@ -23,18 +23,26 @@ export function stripAnsi (text: string): string {
     return text.replace(ANSI_ESCAPES, '')
 }
 
-function lastMatchIndex (text: string, pattern: RegExp): number {
+// The start of the last match that ends after `from` (earlier matches were already counted).
+function lastMatchIndex (text: string, pattern: RegExp, from: number): number {
     let index = -1
     for (const match of text.matchAll(pattern)) {
-        index = match.index ?? index
+        const start = match.index ?? 0
+        if (start + match[0].length > from) {
+            index = start
+        }
     }
     return index
 }
 
-/** The latest agent signal in a piece of terminal text, or null when it shows none. */
-export function lastSignal (text: string): AgentSignal | null {
-    const working = lastMatchIndex(text, WORKING_PATTERN)
-    const waiting = lastMatchIndex(text, WAITING_PATTERN)
+/**
+ * The latest agent signal in a piece of terminal text, or null when it shows none. Only matches that
+ * end after `from` count, so text kept from the previous chunk (to catch a phrase split across
+ * chunks) does not repeat a signal that was already handled.
+ */
+export function lastSignal (text: string, from = 0): AgentSignal | null {
+    const working = lastMatchIndex(text, WORKING_PATTERN, from)
+    const waiting = lastMatchIndex(text, WAITING_PATTERN, from)
     if (working < 0 && waiting < 0) {
         return null
     }

@@ -8,7 +8,7 @@ import './cjsGlobals.js'
 import { handleRussh } from './russhRoutes.js'
 import { getSession, openSession } from './sessions.js'
 
-const HOST_PATTERN = /^[A-Za-z0-9._@:-]{1,255}$/
+const HOST_PATTERN = /^[A-Za-z0-9._-]{1,255}$/
 const MAX_SIZE = 1000
 
 function validSize (value) {
@@ -54,24 +54,32 @@ async function act (session, action, request) {
     return error(404, 'not found')
 }
 
+async function route (request) {
+    const { pathname } = new URL(request.url)
+    const russhResponse = await handleRussh(request, pathname)
+    if (russhResponse) {
+        return russhResponse
+    }
+    if (pathname === '/api/ssh/sessions' && request.method === 'POST') {
+        return create(request)
+    }
+    const match = pathname.match(/^\/api\/ssh\/sessions\/([0-9a-f-]{36})(?:\/(output|input|resize))?$/)
+    if (!match) {
+        return error(404, 'not found')
+    }
+    const session = getSession(match[1])
+    if (!session) {
+        return error(404, 'no such session')
+    }
+    return act(session, match[2], request)
+}
+
 export default {
     async fetch (request) {
-        const { pathname } = new URL(request.url)
-        const russhResponse = await handleRussh(request, pathname)
-        if (russhResponse) {
-            return russhResponse
+        try {
+            return await route(request)
+        } catch (failure) {
+            return error(502, failure instanceof Error ? failure.message : String(failure))
         }
-        if (pathname === '/api/ssh/sessions' && request.method === 'POST') {
-            return create(request)
-        }
-        const match = pathname.match(/^\/api\/ssh\/sessions\/([0-9a-f-]{36})(?:\/(output|input|resize))?$/)
-        if (!match) {
-            return error(404, 'not found')
-        }
-        const session = getSession(match[1])
-        if (!session) {
-            return error(404, 'no such session')
-        }
-        return act(session, match[2], request)
     },
 }

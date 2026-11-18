@@ -4,6 +4,8 @@ import { TerminalService } from 'tabby-local'
 import { window as acdeWindow } from 'acde:window'
 
 const MAX_COMMAND_LENGTH = 4000
+const MAX_PATH_LENGTH = 4096
+const MAX_TITLE_LENGTH = 200
 // Wait for the new shell to finish printing its prompt before typing the command.
 const PROMPT_SETTLE_MS = 300
 // Any control character (newline, carriage return, escape...) could submit or alter the command.
@@ -14,6 +16,10 @@ export interface RunRequest {
     command: string
     cwd?: string
     title?: string
+}
+
+function isPlainText (value: unknown, maxLength: number): value is string {
+    return typeof value === 'string' && value.length <= maxLength && !CONTROL_CHARACTERS.test(value)
 }
 
 /** Validates a request from another app; returns null for anything that is not a usable run request. */
@@ -28,10 +34,11 @@ export function parseRunRequest (request: unknown): RunRequest | null {
     if (!command.trim() || command.length > MAX_COMMAND_LENGTH || CONTROL_CHARACTERS.test(command)) {
         return null
     }
-    if (cwd !== undefined && typeof cwd !== 'string') {
+    // The folder is typed into the shell too, so it gets the same check as the command.
+    if (cwd !== undefined && !isPlainText(cwd, MAX_PATH_LENGTH)) {
         return null
     }
-    if (title !== undefined && typeof title !== 'string') {
+    if (title !== undefined && !isPlainText(title, MAX_TITLE_LENGTH)) {
         return null
     }
     return { kind, command, cwd, title }

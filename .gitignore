@@ -46,3 +46,8 @@ dist-artifacts/
 
 # macOS archive metadata
 ._*
+
+# The acde app pins its dependencies with npm (Tabby itself uses yarn).
+!acde-app/package-lock.json
+# Written by demo/configure.sh for each checkout.
+demo/CLAUDE.md

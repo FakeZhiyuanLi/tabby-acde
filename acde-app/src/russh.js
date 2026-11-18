@@ -46,6 +46,13 @@ async function call (path, body) {
     return answer
 }
 
+async function postBytes (url, body) {
+    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body })
+    if (!response.ok) {
+        throw new Error((await response.json().catch(() => ({}))).error ?? response.statusText)
+    }
+}
+
 function fromBase64 (text) {
     const bytes = Uint8Array.from(atob(text), c => c.charCodeAt(0))
     return globalThis.Buffer ? globalThis.Buffer.from(bytes) : bytes
@@ -383,8 +390,10 @@ export class Channel extends Destructible {
     // Writes are sent one after another so they reach the server in order.
     async write (data) {
         const body = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data))
-        this.writes = this.writes.then(() => fetch(API + this.path('write'), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body }))
-        await this.writes
+        const sent = this.writes.then(() => postBytes(API + this.path('write'), body))
+        // A failed write is reported to its caller only, so later writes still go out.
+        this.writes = sent.catch(() => null)
+        await sent
     }
 
     async eof () {

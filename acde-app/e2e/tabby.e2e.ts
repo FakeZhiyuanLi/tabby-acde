@@ -86,6 +86,14 @@ test('rejects a run request whose command contains a newline', { timeout: TEST_T
     await expect(app!.getByText('Agent: rejected')).toHaveCount(0)
 })
 
+test('rejects a run request whose folder contains control characters', { timeout: TEST_TIMEOUT_MS }, async ({ app }) => {
+    await waitForTabby(app!)
+    // Ctrl-U erases the typed line and a carriage return runs what follows, whatever the quoting.
+    await sendRequest(app!, { kind: 'run', command: 'ls', cwd: '\u0015touch /tmp/tabby-acde-injected\r', title: 'Agent: bad folder' })
+    await new Promise(resolve => setTimeout(resolve, NOT_RUN_GRACE_MS))
+    await expect(app!.getByText('Agent: bad folder')).toHaveCount(0)
+})
+
 test('shows a waiting agent in the window title until it is answered', { timeout: TEST_TIMEOUT_MS }, async ({ app }) => {
     await waitForTabby(app!)
     await openTerminal(app!)

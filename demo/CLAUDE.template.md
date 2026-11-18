@@ -15,19 +15,10 @@ Tabby, where the user can watch it.
 
 ## The demo project
 
-- Tests: `cd ~/Downloads/project-checkpoints/tabby-acde/demo/checkout && node --test`
-- Fix agent: `~/Downloads/project-checkpoints/tabby-acde/demo/fix-agent.sh` (run it in its own tab)
+- Tests: `cd "@DEMO_DIR@/checkout" && node --test`
+- Fix agent: `"@DEMO_DIR@/fix-agent.sh"` (run it in its own tab)
 
-## Servers
-
-- The same project is in `~/tabby-demo` on **rack1** and **rack2**.
-- Open a server with the **Profiles & connections** button, then the profile named
-  `rack1 · JS SSH` or `rack2 · JS SSH` (pure-JS SSH in Tabby's acde backend; use these, not the
-  plain `rack1` / `rack2` profiles).
-- On a server: tests `cd ~/tabby-demo/checkout && node --test`; fix agent `~/tabby-demo/fix-agent.sh`.
-  Run the fix agent in the server's own tab; its tab is then titled "Fix agent · <server>".
-
-## Rules
+@SERVERS@## Rules
 
 - Never answer an approval prompt for the user. When an agent asks "Do you want to proceed?",
   tell the user which tab is waiting and wait for them (`wait_for` the agent's "Done" or "Stopped",

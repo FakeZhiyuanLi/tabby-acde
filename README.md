@@ -1,3 +1,5 @@
+> **Branch `acde`: Tabby ported to Dopame OS (acde).** Start with [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md); what changed and why is in [PORTING.md](PORTING.md).
+
 [![](docs/readme.png)](https://tabby.sh)
 
 

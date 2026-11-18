@@ -7,6 +7,8 @@ import { AcdeSSHPTYProxy, SSH_COMMAND } from './ssh'
 
 const DEFAULT_COLUMNS = 80
 const DEFAULT_ROWS = 30
+// Typed into a shell, any of these could submit, erase or alter the line.
+const CONTROL_CHARACTERS = /[\x00-\x1f\x7f]/
 
 interface SpawnOptions {
     cols?: number
@@ -32,11 +34,16 @@ function shellPath (path: string): string {
 
 /**
  * acde:terminal.open() always starts the user's default shell and takes no command or working
- * directory, so both are typed into the new shell as one line. The screen is cleared once the
- * directory change succeeds (a failed `cd` stays visible). The leading space keeps the line out of
- * the shell history where HISTCONTROL=ignorespace (the bash default on most distributions).
+ * directory, so both are typed into the new shell as one line. Each step runs only if the one before
+ * succeeded: a failed `cd` stays visible and the command does not run in the wrong folder. The leading
+ * space keeps the line out of the shell history where HISTCONTROL=ignorespace (the bash default on most
+ * distributions). Quoting cannot stop a terminal from acting on control characters (Ctrl-U, Enter), so
+ * values containing them are refused.
  */
 export function startupInput (command: string, args: string[], cwd?: string): string {
+    if ([command, ...args, cwd ?? ''].some(value => CONTROL_CHARACTERS.test(value))) {
+        throw new Error('A profile command, argument or folder contains a control character')
+    }
     const steps: string[] = []
     if (cwd) {
         steps.push(`cd -- ${shellPath(cwd)} && clear`)
@@ -46,7 +53,7 @@ export function startupInput (command: string, args: string[], cwd?: string): st
     if (command) {
         steps.push(`exec ${[command, ...args].map(shellQuote).join(' ')}`)
     }
-    return steps.length ? ` ${steps.join('; ')}\r` : ''
+    return steps.length ? ` ${steps.join(' && ')}\r` : ''
 }
 
 /** A local shell running in an acde:terminal, in the shape tabby-local's session expects. */

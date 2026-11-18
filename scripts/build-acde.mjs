@@ -13,6 +13,7 @@ export const acdePlugins = [
     'tabby-settings',
     'tabby-terminal',
     'tabby-local',
+    'tabby-ssh',
     'tabby-web',
     'tabby-community-color-schemes',
     'tabby-linkifier',

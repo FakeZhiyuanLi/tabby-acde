@@ -227,3 +227,14 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
   `rack2 · JS SSH`, started a fix agent in each ("Fix agent · <server>" tabs), the title showed
   "(2 waiting)", it did not approve, a stand-in script approved both, and it re-ran the tests: 3/3
   on each server. 58 s end to end.
+- **Full SSH port, spike: passed.** Tabby's own `tabby-ssh` plugin (3,617 lines, unchanged) now
+  builds into the acde app and runs. Its native `russh` module is replaced by a stand-in with the
+  same API (`acde-app/src/russh.js`), registered under the name `russh`; it runs each connection
+  in the backend on ssh2 (`backend/russhBridge.js`, `backend/russhRoutes.js`). Verified on macOS
+  against rack1: Tabby's SSH profile and tab UI, Tabby's host key dialog (fingerprint matched the
+  Mac's known_hosts), sign-in through the macOS SSH agent (found with launchctl; the page gets it as
+  SSH_AUTH_SOCK, and `fs.stat` asks the backend for the real file type), PTY, typing and size.
+  Done so far: socket transport, host key, none/password/key/agent/keyboard-interactive auth,
+  session channels (PTY, shell, exec). Not yet: SFTP, jump hosts, remote forwarding, proxies.
+  Local and dynamic forwarding cannot work while acde turns every backend listen() into a private
+  Unix socket. 7/7 e2e still pass in the sandbox with tabby-ssh loaded.

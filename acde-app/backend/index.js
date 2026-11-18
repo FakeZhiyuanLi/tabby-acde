@@ -5,6 +5,7 @@
 //   POST   /api/ssh/sessions/:id/resize   { cols, rows }
 //   DELETE /api/ssh/sessions/:id
 import './cjsGlobals.js'
+import { handleRussh } from './russhRoutes.js'
 import { getSession, openSession } from './sessions.js'
 
 const HOST_PATTERN = /^[A-Za-z0-9._@:-]{1,255}$/
@@ -56,6 +57,10 @@ async function act (session, action, request) {
 export default {
     async fetch (request) {
         const { pathname } = new URL(request.url)
+        const russhResponse = await handleRussh(request, pathname)
+        if (russhResponse) {
+            return russhResponse
+        }
         if (pathname === '/api/ssh/sessions' && request.method === 'POST') {
             return create(request)
         }

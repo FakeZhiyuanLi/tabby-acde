@@ -4,12 +4,16 @@ import { fs } from 'acde:fs'
 import { terminal } from 'acde:terminal'
 import { window as acdeWindow } from 'acde:window'
 
+import * as russh from './russh.js'
+import { exposeAgentSocket, fsPromises, statFromBackend } from './sshHost.js'
+
 // Load order matters: tabby-acde comes after tabby-web so its window service takes precedence.
 const PLUGIN_NAMES = [
     'tabby-core',
     'tabby-settings',
     'tabby-terminal',
     'tabby-local',
+    'tabby-ssh',
     'tabby-web',
     'tabby-community-color-schemes',
     'tabby-linkifier',
@@ -50,10 +54,16 @@ function registerHostModules (tabby) {
     // tabby-local checks working directories with fs.statSync and resolves them with fs.realpath,
     // but a page has no file system. Treat every path as a folder: the shell's own `cd` reports a
     // missing one. This replaces the web preload's fs mock, which made every folder invalid.
-    const folder = { isDirectory: () => true }
+    // stat asks the backend for the real type first (tabby-ssh checks that the SSH agent path is a
+    // socket), and falls back to a folder for paths the backend cannot see, such as "~/projects".
+    const folder = { isDirectory: () => true, isFile: () => false, isSocket: () => false, isSymbolicLink: () => false }
     tabby.registerMock('fs', {
         statSync: () => folder,
-        stat: (_path, callback) => callback(null, folder),
+        stat: (path, callback) => {
+            statFromBackend(path)
+                .then(answer => callback(null, answer.exists ? answer.stats : folder))
+                .catch(() => callback(null, folder))
+        },
         realpath: (path, callback) => callback(null, path),
         realpathSync: (path) => path,
         readdir: (_path, callback) => callback(null, []),
@@ -64,6 +74,9 @@ function registerHostModules (tabby) {
     })
     tabby.registerModule('acde:terminal', { terminal })
     tabby.registerModule('acde:window', { window: acdeWindow })
+    // tabby-ssh's native SSH module; this stand-in runs SSH in the app's acde backend.
+    tabby.registerModule('russh', russh)
+    tabby.registerModule('fs/promises', fsPromises)
     tabby.registerModule('node:url', {
         pathToFileURL: (path) => new URL(path, window.location.href),
         fileURLToPath: (url) => new URL(url).pathname,
@@ -96,6 +109,7 @@ async function boot () {
     const connector = createConnector()
     window.__connector__ = connector
     registerHostModules(tabby)
+    await exposeAgentSocket()
 
     const urls = PLUGIN_NAMES.map(name => `${PLUGIN_BASE_URL}/${name}`)
     const packageModules = await tabby.loadPlugins(urls, showProgress)

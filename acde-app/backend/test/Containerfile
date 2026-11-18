@@ -1,0 +1,8 @@
+# Throwaway OpenSSH server for the russh stand-in's integration tests (run.sh). Not for real use.
+FROM docker.io/library/ubuntu:26.04
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends openssh-server \
+  && rm -rf /var/lib/apt/lists/* && mkdir -p /run/sshd && useradd -m -s /bin/bash tester
+RUN printf 'PasswordAuthentication yes\nKbdInteractiveAuthentication yes\nPubkeyAuthentication yes\nUsePAM yes\n' \
+  > /etc/ssh/sshd_config.d/tabby-test.conf
+COPY entrypoint.sh /entrypoint.sh
+CMD ["/bin/sh", "/entrypoint.sh"]

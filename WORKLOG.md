@@ -238,3 +238,10 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
   session channels (PTY, shell, exec). Not yet: SFTP, jump hosts, remote forwarding, proxies.
   Local and dynamic forwarding cannot work while acde turns every backend listen() into a private
   Unix socket. 7/7 e2e still pass in the sandbox with tabby-ssh loaded.
+- **Full SSH port: SFTP and integration tests.** `backend/russhSftp.js` implements russh's SFTP
+  (list, stat, read, write, rename, chmod, mkdir, remove) on ssh2. Tabby's own SFTP panel opened on
+  rack1 and listed `/` with owners, dates and permissions. New integration tests
+  (`backend/test/run.sh`) start a throwaway OpenSSH server in a private Podman pod with no
+  published ports and per-run credentials, then test the bridge: host key (and rejecting it),
+  none/password, keyboard-interactive (PAM), a passphrase-protected key, and an SFTP round trip.
+  5/5 pass on rack-laptop; the pod is removed afterwards.

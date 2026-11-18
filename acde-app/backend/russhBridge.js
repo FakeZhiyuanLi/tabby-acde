@@ -6,6 +6,8 @@
 import { createHash, randomUUID } from 'node:crypto'
 import ssh2 from 'ssh2'
 
+import { SftpSession } from './russhSftp.js'
+
 const { Client, utils } = ssh2
 // ssh2's readyTimeout runs until authentication succeeds, which in russh's model includes the
 // person answering Tabby's host key, password and passphrase dialogs.
@@ -38,6 +40,7 @@ class Connection {
         this.wake = null
         this.closed = false
         this.channels = new Map()
+        this.sftpSessions = new Map()
         this.nextChannel = 1
         this.verifyHostKey = null
         this.authCallback = null
@@ -235,11 +238,36 @@ class Connection {
         this.channels.get(id)?.stream?.close()
     }
 
+    // ssh2 opens its own session channel for SFTP, so the placeholder channel only names it.
+    async activateSFTP (id) {
+        this.channel(id)
+        this.sftpSessions.set(id, await SftpSession.open(this.client))
+    }
+
+    sftp (id) {
+        const session = this.sftpSessions.get(id)
+        if (!session) {
+            throw new Error(`no SFTP session on channel ${id}`)
+        }
+        return session
+    }
+
+    async closeSFTP (id) {
+        const session = this.sftpSessions.get(id)
+        this.sftpSessions.delete(id)
+        this.channels.delete(id)
+        await session?.close()
+    }
+
     end () {
         if (this.closed) {
             return
         }
         this.closed = true
+        for (const session of this.sftpSessions.values()) {
+            session.close().catch(() => null)
+        }
+        this.sftpSessions.clear()
         this.emit({ type: 'disconnect' })
         this.wake?.()
         this.client.end()

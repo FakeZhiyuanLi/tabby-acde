@@ -2,7 +2,8 @@
 // host page registers this module under that name instead. It has russh's API (lib/index.d.ts) and
 // runs each connection in the app's acde backend (backend/russhBridge.js) on ssh2, a pure-JS client.
 // Implemented so far: socket transport, host key check, none/password/key/agent/keyboard-interactive
-// auth, session channels with PTY, shell and exec. Not yet: SFTP, port forwarding, jump hosts, proxies.
+// auth, session channels with PTY, shell and exec, and SFTP. Not yet: jump hosts, remote port
+// forwarding, proxies. Local and dynamic forwarding need a TCP listener, which acde backends lack.
 import { Subject } from 'rxjs'
 
 const API = '/api/russh'
@@ -423,8 +424,10 @@ export class AuthenticatedSSHClient extends Destructible {
         return new Channel(this.id, channel, this.events.channel(channel))
     }
 
-    async activateSFTP () {
-        throw unsupported('SFTP')
+    async activateSFTP (newChannel) {
+        const { channel } = newChannel.take()
+        await call(`/connections/${this.id}/sftp/${channel}/activate`)
+        return new SFTP(this.id, channel, this.events.disconnect)
     }
 
     async disconnect () {
@@ -438,5 +441,93 @@ export class SSHAgentStream {
     }
 }
 
-export class SFTP {}
-export class SFTPFile {}
+/** An open remote file; reads and writes continue from the backend's position. */
+export class SFTPFile {
+    constructor (base) {
+        this.base = base
+    }
+
+    async read (length) {
+        const response = await fetch(`${API}${this.base}/read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ length }),
+        })
+        if (!response.ok) {
+            throw new Error((await response.json()).error ?? response.statusText)
+        }
+        const bytes = new Uint8Array(await response.arrayBuffer())
+        return globalThis.Buffer ? globalThis.Buffer.from(bytes) : bytes
+    }
+
+    async writeAll (data) {
+        const response = await fetch(`${API}${this.base}/write`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: data })
+        if (!response.ok) {
+            throw new Error((await response.json()).error ?? response.statusText)
+        }
+    }
+
+    // ssh2 writes each chunk before answering, so there is nothing left to flush.
+    async flush () { } // eslint-disable-line @typescript-eslint/no-empty-function
+
+    async shutdown () {
+        await call(`${this.base}/close`)
+    }
+}
+
+export class SFTP extends Destructible {
+    constructor (connectionId, channel, disconnect) {
+        super()
+        this.base = `/connections/${connectionId}/sftp/${channel}`
+        const closed = new Subject()
+        disconnect.subscribe({ complete: () => closed.next() })
+        this.closedSubject = closed
+        this.closed$ = closed.asObservable()
+    }
+
+    op (name, body) {
+        return call(`${this.base}/${name}`, body)
+    }
+
+    createDirectory (path) {
+        return this.op('createDirectory', { path })
+    }
+
+    removeDirectory (path) {
+        return this.op('removeDirectory', { path })
+    }
+
+    removeFile (path) {
+        return this.op('removeFile', { path })
+    }
+
+    async readlink (path) {
+        return (await this.op('readlink', { path })).target
+    }
+
+    rename (src, dst) {
+        return this.op('rename', { src, dst })
+    }
+
+    stat (path) {
+        return this.op('stat', { path })
+    }
+
+    readDirectory (path) {
+        return this.op('readDirectory', { path })
+    }
+
+    chmod (path, mode) {
+        return this.op('chmod', { path, mode })
+    }
+
+    async open (path, mode) {
+        const { file } = await this.op('open', { path, mode })
+        return new SFTPFile(`${this.base}/files/${file}`)
+    }
+
+    async close () {
+        await this.op('close')
+        this.closedSubject.next()
+    }
+}

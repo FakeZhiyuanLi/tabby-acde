@@ -6,11 +6,14 @@ export type AgentSignal = 'working' | 'waiting'
 
 const ANSI_ESCAPES = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[()][0-9A-B]/g
 
-// Shown while an agent is busy (Claude Code, Codex and others print "esc to interrupt").
-const WORKING_PATTERN = /esc to (?:interrupt|cancel)/gi
+// Shown while an agent is busy (Claude Code, Codex and others print "esc to interrupt"). Not "esc to
+// cancel": Codex prints that under its approval prompts.
+const WORKING_PATTERN = /esc to interrupt/gi
 
 // Shown when an agent stops to ask for approval or input.
-const WAITING_PATTERN = /do you want to (?:proceed|make this edit|run|create)|allow (?:this|command)|waiting for (?:your )?(?:input|approval)|\(y\/n\)|❯ 1\. yes/gi
+// Codex asks "Would you like to make the following edits?" / "…run the following command?", offers
+// "› 1. Yes, proceed", and asks to trust a new folder first.
+const WAITING_PATTERN = /do you want to (?:proceed|make this edit|run|create)|would you like to (?:make|run|apply|allow)|yes, proceed|press enter to confirm|trust this folder\?|allow (?:this|command)|waiting for (?:your )?(?:input|approval)|\(y\/n\)|❯ 1\. yes/gi
 
 const AGENT_NAMES: [RegExp, string][] = [
     [/claude code/i, 'Claude Code'],

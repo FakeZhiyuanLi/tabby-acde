@@ -245,3 +245,11 @@ Plan page: https://claude.ai/artifact/4VyKDQQrcCmePXuxayb9gx
   published ports and per-run credentials, then test the bridge: host key (and rejecting it),
   none/password, keyboard-interactive (PAM), a passphrase-protected key, and an SFTP round trip.
   5/5 pass on rack-laptop; the pod is removed afterwards.
+- **Full SSH port: jump hosts and remote forwarding.** The stand-in now supports
+  `openTCPForwardChannel`, `SshTransport.newSshChannel` (a connection over another connection's
+  channel), `forwardTCPPort` with incoming connections on `tcpChannelOpen$`, and the page gets a `net`
+  module whose sockets the backend opens (`backend/netSockets.js`, `src/net.js`), which tabby-ssh
+  uses to connect a remote forward to its local target. `net.createServer` throws: local and
+  dynamic forwarding need a TCP listener, and acde turns backend listen() into a private Unix
+  socket. The test pod now runs a second sshd on 2222 as a jump host; 8/8 integration tests pass
+  (jump host with the target's own host key, remote forward ping/pong, backend socket), and 7/7 e2e.

@@ -72,12 +72,25 @@ class Connection {
         })
     }
 
-    start (transport, config) {
-        if (transport?.kind !== 'socket') {
-            throw new Error(`transport ${transport?.kind} is not supported yet`)
+    // A socket address, or (for a jump host) a forwarded channel of another connection.
+    target (transport) {
+        if (transport?.kind === 'socket') {
+            return splitAddress(transport.address)
         }
-        const { host, port } = splitAddress(transport.address)
+        if (transport?.kind === 'channel') {
+            const jump = connections.get(transport.connection)
+            if (!jump) {
+                throw new Error('the jump host connection is gone')
+            }
+            return { sock: jump.takeStream(transport.channel) }
+        }
+        throw new Error(`transport ${transport?.kind} is not supported yet`)
+    }
+
+    start (transport, config) {
+        const target = this.target(transport)
         this.client
+            .on('tcp connection', (info, accept) => this.onForwardedConnection(info, accept()))
             .on('banner', text => this.emit({ type: 'banner', text }))
             .on('ready', () => this.settleAuth({ result: 'success' }))
             .on('error', error => {
@@ -87,8 +100,7 @@ class Connection {
             })
             .on('close', () => this.end())
             .connect({
-                host,
-                port,
+                ...target,
                 // ssh2 requires a username up front; russh only learns it with the first auth
                 // method, and every method below carries its own username, which ssh2 uses.
                 username: 'russh-stand-in',
@@ -198,7 +210,7 @@ class Connection {
                     return
                 }
                 channel.stream = stream
-                this.attach(id, stream)
+                this.activateChannel(id)
                 resolve()
             })
         })
@@ -210,6 +222,66 @@ class Connection {
 
     requestExec (id, command) {
         return this.openStream(id, (pty, done) => this.client.exec(command, { pty }, done))
+    }
+
+    /** A direct-tcpip channel to address:port through this server (local forward or jump host). */
+    openTCPForwardChannel ({ addressToConnectTo, portToConnectTo, originatorAddress, originatorPort }) {
+        return new Promise((resolve, reject) => {
+            this.client.forwardOut(originatorAddress ?? '127.0.0.1', originatorPort ?? 0, addressToConnectTo, portToConnectTo, (error, stream) => {
+                if (error) {
+                    reject(error)
+                    return
+                }
+                const id = this.nextChannel++
+                this.channels.set(id, { pty: false, stream, attached: false })
+                resolve(id)
+            })
+        })
+    }
+
+    /** Starts sending a channel's data as events; a channel used as a transport is never activated. */
+    activateChannel (id) {
+        const channel = this.channel(id)
+        if (channel.stream && !channel.attached) {
+            channel.attached = true
+            this.attach(id, channel.stream)
+        }
+    }
+
+    /** Hands a forwarded channel's stream to another connection as its socket (jump host). */
+    takeStream (id) {
+        const channel = this.channel(id)
+        if (!channel.stream || channel.attached) {
+            throw new Error(`channel ${id} cannot be used as a transport`)
+        }
+        this.channels.delete(id)
+        return channel.stream
+    }
+
+    /** Asks the server to listen on address:port and forward connections back; the bound port. */
+    forwardTCPPort (address, port) {
+        return new Promise((resolve, reject) => {
+            this.client.forwardIn(address, port, (error, boundPort) => (error ? reject(error) : resolve(boundPort || port)))
+        })
+    }
+
+    stopForwardingTCPPort (address, port) {
+        return new Promise((resolve, reject) => {
+            this.client.unforwardIn(address, port, error => (error ? reject(error) : resolve()))
+        })
+    }
+
+    onForwardedConnection (info, stream) {
+        const id = this.nextChannel++
+        this.channels.set(id, { pty: false, stream, attached: false })
+        this.emit({
+            type: 'tcpChannelOpen',
+            channel: id,
+            targetAddress: info.destIP,
+            targetPort: info.destPort,
+            clientAddress: info.srcIP,
+            clientPort: info.srcPort,
+        })
     }
 
     attach (id, stream) {

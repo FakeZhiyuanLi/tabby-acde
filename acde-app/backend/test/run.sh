@@ -15,8 +15,12 @@ TEST_KEY_PASSPHRASE=$(head -c 18 /dev/urandom | base64 | tr -d '/+=')
 export TEST_PASSWORD TEST_KEY_PASSPHRASE
 podman build -q -t localhost/tabby-ssh-test-server "$APP/backend/test" >/dev/null
 podman pod create --name "$POD" >/dev/null
-podman run -d --pod "$POD" -e TEST_PASSWORD -e TEST_KEY_PASSPHRASE -v "$SHARED":/shared:z localhost/tabby-ssh-test-server >/dev/null
-for _ in $(seq 1 50); do [ -s "$SHARED/host_key.pub" ] && break; sleep 0.2; done
+for port in 22 2222; do
+    podman run -d --pod "$POD" -e TEST_PASSWORD -e TEST_KEY_PASSPHRASE -e SSHD_PORT="$port" \
+      -v "$SHARED":/shared:z localhost/tabby-ssh-test-server >/dev/null
+done
+for _ in $(seq 1 50); do [ -s "$SHARED/host_key_22.pub" ] && [ -s "$SHARED/host_key_2222.pub" ] && break; sleep 0.2; done
+sleep 1
 podman run --rm --pod "$POD" \
   -e TEST_PASSWORD -e TEST_KEY_PASSPHRASE -e TEST_SHARED=/shared \
   -v "$SHARED":/shared:z -v "$APP":/app:ro,z -w /app docker.io/library/node:22-bookworm-slim \

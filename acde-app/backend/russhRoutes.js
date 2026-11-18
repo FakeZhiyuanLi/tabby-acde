@@ -11,6 +11,7 @@
 //   POST /api/russh/connections/:id/channels           -> { channel }
 //   POST /api/russh/connections/:id/channels/:n/:op    op: pty shell exec write resize eof close
 //   POST /api/russh/connections/:id/disconnect
+import { getSocket, openSocket } from './netSockets.js'
 import { connect, findAgentSocket, getConnection, parseKey, statPath } from './russhBridge.js'
 
 //   POST /api/russh/connections/:id/sftp/:n/:op        op: activate close readDirectory stat createDirectory
@@ -18,7 +19,11 @@ import { connect, findAgentSocket, getConnection, parseKey, statPath } from './r
 //   POST /api/russh/connections/:id/sftp/:n/files/:f/:op op: read ({ length } -> bytes) write (bytes) close
 const SFTP_PATH = /^\/api\/russh\/connections\/([0-9a-f-]{36})\/sftp\/(\d+)\/(?:files\/([0-9a-f-]{36})\/(read|write|close)|(activate|close|readDirectory|stat|createDirectory|removeDirectory|removeFile|readlink|rename|chmod|open))$/
 const MAX_READ = 1024 * 1024
-const CONNECTION_PATH =/^\/api\/russh\/connections\/([0-9a-f-]{36})(?:\/(events|host-key|handshake|auth|keyboard-interactive|disconnect|channels)(?:\/(\d+)\/(pty|shell|exec|write|resize|eof|close))?)?$/
+const CONNECTION_PATH =/^\/api\/russh\/connections\/([0-9a-f-]{36})(?:\/(events|host-key|handshake|auth|keyboard-interactive|disconnect|channels|forward-channel|forward-port|stop-forward)(?:\/(\d+)\/(activate|pty|shell|exec|write|resize|eof|close))?)?$/
+//   POST /api/russh/sockets                            { host, port } -> { id }   (outgoing TCP for net.Socket)
+//   GET  /api/russh/sockets/:id/events                 NDJSON: connect, data, end, error, close
+//   POST /api/russh/sockets/:id/:op                    op: write (bytes) end destroy
+const SOCKET_PATH = /^\/api\/russh\/sockets\/([0-9a-f-]{36})\/(events|write|end|destroy)$/
 
 function json (body, status = 200) {
     return Response.json(body, { status })
@@ -34,7 +39,9 @@ async function channelOp (connection, channel, op, request) {
         return new Response(null, { status: 204 })
     }
     const input = await body(request)
-    if (op === 'pty') {
+    if (op === 'activate') {
+        connection.activateChannel(channel)
+    } else if (op === 'pty') {
         connection.requestPTY(channel, { term: input.term, ...input.size })
     } else if (op === 'shell') {
         await connection.requestShell(channel)
@@ -46,6 +53,24 @@ async function channelOp (connection, channel, op, request) {
         connection.eof(channel)
     } else {
         connection.closeChannel(channel)
+    }
+    return new Response(null, { status: 204 })
+}
+
+async function socketOp (id, op, request) {
+    const socket = getSocket(id)
+    if (!socket) {
+        return json({ error: 'no such socket' }, 404)
+    }
+    if (op === 'events') {
+        return new Response(socket.events(), { headers: { 'Content-Type': 'application/x-ndjson' } })
+    }
+    if (op === 'write') {
+        await socket.write(Buffer.from(await request.arrayBuffer()))
+    } else if (op === 'end') {
+        socket.end()
+    } else {
+        socket.destroy()
     }
     return new Response(null, { status: 204 })
 }
@@ -117,6 +142,17 @@ async function connectionOp (connection, action, request) {
     if (action === 'channels') {
         return json({ channel: connection.openSessionChannel() })
     }
+    if (action === 'forward-channel') {
+        return json({ channel: await connection.openTCPForwardChannel((await body(request)).options ?? {}) })
+    }
+    if (action === 'forward-port' || action === 'stop-forward') {
+        const { address, port } = await body(request)
+        if (action === 'stop-forward') {
+            await connection.stopForwardingTCPPort(address, port)
+            return new Response(null, { status: 204 })
+        }
+        return json({ port: await connection.forwardTCPPort(address, port) })
+    }
     connection.end()
     return new Response(null, { status: 204 })
 }
@@ -140,6 +176,14 @@ export async function handleRussh (request, pathname) {
         if (pathname === '/api/russh/connections') {
             const { transport, config } = await body(request)
             return json({ id: connect(transport, config).id })
+        }
+        if (pathname === '/api/russh/sockets') {
+            const { host, port } = await body(request)
+            return json({ id: openSocket(String(host), Number(port)).id })
+        }
+        const socketMatch = pathname.match(SOCKET_PATH)
+        if (socketMatch) {
+            return await socketOp(socketMatch[1], socketMatch[2], request)
         }
         const sftpMatch = pathname.match(SFTP_PATH)
         if (sftpMatch) {

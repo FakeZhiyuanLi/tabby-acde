@@ -136,8 +136,9 @@ export class SshTransport {
         throw unsupported('A proxy command')
     }
 
-    static async newSshChannel () {
-        throw unsupported('A jump host')
+    /** A jump host: the connection runs over a channel that another connection forwarded. */
+    static async newSshChannel (inner) {
+        return new SshTransport({ kind: 'channel', connection: inner.connection, channel: inner.channel })
     }
 
     static async newSocksProxy () {
@@ -155,6 +156,7 @@ class ConnectionEvents {
         this.id = id
         this.banner = new Subject()
         this.disconnect = new Subject()
+        this.tcpChannelOpen = new Subject()
         this.channels = new Map()
         this.onHostKey = null
         this.read()
@@ -194,6 +196,9 @@ class ConnectionEvents {
             this.onHostKey?.(new SshPublicKey(event.algorithm, fromBase64(event.base64), event.fingerprint))
         } else if (event.type === 'banner') {
             this.banner.next(event.text)
+        } else if (event.type === 'tcpChannelOpen') {
+            const { targetAddress, targetPort, clientAddress, clientPort } = event
+            this.tcpChannelOpen.next({ channel: new NewChannel({ connection: this.id, channel: event.channel }), targetAddress, targetPort, clientAddress, clientPort })
         } else if (event.type === 'data') {
             this.channel(event.channel).data.next(fromBase64(event.data))
         } else if (event.type === 'extendedData') {
@@ -398,7 +403,7 @@ export class AuthenticatedSSHClient extends Destructible {
         this.events = events
         this.disconnect$ = events.disconnect.asObservable()
         this.x11ChannelOpen$ = new Subject().asObservable()
-        this.tcpChannelOpen$ = new Subject().asObservable()
+        this.tcpChannelOpen$ = events.tcpChannelOpen.asObservable()
         this.agentChannelOpen$ = new Subject().asObservable()
     }
 
@@ -407,21 +412,26 @@ export class AuthenticatedSSHClient extends Destructible {
         return new NewChannel({ connection: this.id, channel })
     }
 
-    async openTCPForwardChannel () {
-        throw unsupported('Port forwarding')
+    /** A direct-tcpip channel through this server: a jump host's transport or a local forward. */
+    async openTCPForwardChannel (options) {
+        const { channel } = await call(`/connections/${this.id}/forward-channel`, { options })
+        return new NewChannel({ connection: this.id, channel })
     }
 
-    async forwardTCPPort () {
-        throw unsupported('Remote port forwarding')
+    /** Remote forwarding: the server listens; connections arrive on tcpChannelOpen$. */
+    async forwardTCPPort (address, port) {
+        return (await call(`/connections/${this.id}/forward-port`, { address, port })).port
     }
 
-    async stopForwardingTCPPort () {
-        // Nothing is forwarded yet.
+    async stopForwardingTCPPort (address, port) {
+        await call(`/connections/${this.id}/stop-forward`, { address, port })
     }
 
     async activateChannel (newChannel) {
         const { channel } = newChannel.take()
-        return new Channel(this.id, channel, this.events.channel(channel))
+        const subjects = this.events.channel(channel)
+        await call(`/connections/${this.id}/channels/${channel}/activate`)
+        return new Channel(this.id, channel, subjects)
     }
 
     async activateSFTP (newChannel) {

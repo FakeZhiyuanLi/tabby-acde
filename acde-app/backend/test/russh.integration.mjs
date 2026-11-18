@@ -6,9 +6,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test } from 'node:test'
 
+import { openSocket } from '../netSockets.js'
 import { connect, parseKey } from '../russhBridge.js'
 
 const ADDRESS = '127.0.0.1:22'
+const JUMP_ADDRESS = '127.0.0.1:2222'
 const USER = 'tester'
 const { TEST_PASSWORD, TEST_KEY_PASSPHRASE, TEST_SHARED } = process.env
 const OPEN_READ = 1
@@ -57,8 +59,8 @@ function eventReader (connection) {
     }
 }
 
-async function open ({ acceptHostKey = true } = {}) {
-    const connection = connect({ kind: 'socket', address: ADDRESS }, {})
+async function open ({ acceptHostKey = true, transport = { kind: 'socket', address: ADDRESS } } = {}) {
+    const connection = connect(transport, {})
     const events = eventReader(connection)
     const hostKey = await events.next(e => e.type === 'hostKey')
     connection.answerHostKey(acceptHostKey)
@@ -78,7 +80,7 @@ async function exec (connection, events, command) {
 test('the host key is the server key, and a rejected key ends the connection', async () => {
     const { connection, hostKey } = await open()
     assert.equal(hostKey.algorithm, 'ssh-ed25519')
-    assert.equal(hostKey.base64, shared('host_key.pub').split(/\s+/)[1])
+    assert.equal(hostKey.base64, shared('host_key_22.pub').split(/\s+/)[1])
     assert.match(hostKey.fingerprint, /^SHA256:/)
     await connection.handshake
     connection.end()
@@ -169,4 +171,60 @@ test('SFTP writes, lists, reads, renames and removes files', async () => {
     assert.equal((await sftp.stat(`/home/${USER}`)).type, 0)
     await connection.closeSFTP(channel)
     connection.end()
+})
+
+async function signIn (options) {
+    const opened = await open(options)
+    await opened.connection.handshake
+    const result = await opened.connection.authenticate({ type: 'password', username: USER, password: TEST_PASSWORD })
+    assert.equal(result.result, 'success')
+    return opened
+}
+
+test('a jump host forwards a channel that the next connection runs over', async () => {
+    const jump = await signIn({ transport: { kind: 'socket', address: JUMP_ADDRESS } })
+    assert.equal(jump.hostKey.base64, shared('host_key_2222.pub').split(/\s+/)[1])
+    const channel = await jump.connection.openTCPForwardChannel({
+        addressToConnectTo: '127.0.0.1',
+        portToConnectTo: 22,
+        originatorAddress: '127.0.0.1',
+        originatorPort: 0,
+    })
+    const target = await signIn({ transport: { kind: 'channel', connection: jump.connection.id, channel } })
+    assert.equal(target.hostKey.base64, shared('host_key_22.pub').split(/\s+/)[1])
+    assert.equal((await exec(target.connection, target.events, 'echo through-the-jump-host')).trim(), 'through-the-jump-host')
+    target.connection.end()
+    jump.connection.end()
+})
+
+test('a remote forward brings the server-side connection back as a channel', async () => {
+    const { connection, events } = await signIn()
+    const port = await connection.forwardTCPPort('127.0.0.1', 0)
+    assert.ok(port > 0)
+    const output = exec(connection, events, `bash -c 'exec 3<>/dev/tcp/127.0.0.1/${port}; printf ping >&3; head -c 4 <&3'`)
+    const opened = await events.next(e => e.type === 'tcpChannelOpen')
+    assert.equal(opened.targetPort, port)
+    connection.activateChannel(opened.channel)
+    const ping = await events.next(e => e.type === 'data' && e.channel === opened.channel)
+    assert.equal(Buffer.from(ping.data, 'base64').toString(), 'ping')
+    connection.write(opened.channel, Buffer.from('pong'))
+    connection.eof(opened.channel)
+    assert.equal(await output, 'pong')
+    await connection.stopForwardingTCPPort('127.0.0.1', port)
+    connection.end()
+})
+
+test('a backend socket for the page connects and reads', async () => {
+    const socket = openSocket('127.0.0.1', 22)
+    const reader = socket.events().getReader()
+    const decoder = new TextDecoder()
+    let text = ''
+    while (!text.includes('"data"')) {
+        const { done, value } = await reader.read()
+        assert.ok(!done, 'the socket closed before sending data')
+        text += decoder.decode(value)
+    }
+    const data = JSON.parse(text.split('\n').find(line => line.includes('"data"'))).data
+    assert.match(Buffer.from(data, 'base64').toString(), /^SSH-2\.0-/)
+    socket.destroy()
 })

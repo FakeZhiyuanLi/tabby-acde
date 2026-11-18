@@ -4,6 +4,7 @@ import { fs } from 'acde:fs'
 import { terminal } from 'acde:terminal'
 import { window as acdeWindow } from 'acde:window'
 
+import * as net from './net.js'
 import * as russh from './russh.js'
 import { exposeAgentSocket, fsPromises, statFromBackend } from './sshHost.js'
 
@@ -77,6 +78,8 @@ function registerHostModules (tabby) {
     // tabby-ssh's native SSH module; this stand-in runs SSH in the app's acde backend.
     tabby.registerModule('russh', russh)
     tabby.registerModule('fs/promises', fsPromises)
+    // Outgoing sockets for remote port forwards, opened by the backend.
+    tabby.registerModule('net', net)
     tabby.registerModule('node:url', {
         pathToFileURL: (path) => new URL(path, window.location.href),
         fileURLToPath: (url) => new URL(url).pathname,

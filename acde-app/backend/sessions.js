@@ -1,12 +1,13 @@
 // SSH shell sessions over ssh2 (pure JS). Each session collects its output in a queue that one
 // streaming response drains; status and errors are written into the same stream as text, so the
-// terminal shows them like ssh would.
+// terminal shows them like ssh would. The shell is paused while the queue is over HIGH_WATER_BYTES.
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import ssh2 from 'ssh2'
 
+import { HIGH_WATER_BYTES } from './eventQueue.js'
 import { checkHostKey } from './knownHosts.js'
 import { resolveHost } from './sshConfig.js'
 
@@ -51,6 +52,7 @@ class Session {
         this.target = resolveHost(alias)
         this.size = { cols, rows }
         this.queue = []
+        this.queuedBytes = 0
         this.wake = null
         this.closed = false
         this.stream = null
@@ -58,8 +60,23 @@ class Session {
     }
 
     push (chunk) {
-        this.queue.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
+        const bytes = typeof chunk === 'string' ? Buffer.from(chunk) : chunk
+        this.queue.push(bytes)
+        this.queuedBytes += bytes.length
+        if (this.queuedBytes > HIGH_WATER_BYTES) {
+            this.setPaused(true)
+        }
         this.wake?.()
+    }
+
+    setPaused (paused) {
+        for (const source of [this.stream, this.stream?.stderr]) {
+            if (paused) {
+                source?.pause()
+            } else {
+                source?.resume()
+            }
+        }
     }
 
     note (text) {
@@ -147,7 +164,10 @@ class Session {
                     await new Promise(resolve => { this.wake = resolve })
                 }
                 if (this.queue.length) {
-                    controller.enqueue(new Uint8Array(Buffer.concat(this.queue.splice(0))))
+                    const output = Buffer.concat(this.queue.splice(0))
+                    this.queuedBytes = 0
+                    this.setPaused(false)
+                    controller.enqueue(new Uint8Array(output))
                 } else {
                     controller.close()
                 }

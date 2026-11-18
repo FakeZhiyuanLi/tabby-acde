@@ -83,6 +83,17 @@ test('keeps panes undimmed when switching tabs', { timeout: TEST_TIMEOUT_MS }, a
     })()`)).toBe(false)
 })
 
+test('decodes binary data from the backend', { timeout: TEST_TIMEOUT_MS }, async ({ app }) => {
+    await waitForTabby(app!)
+    // Through the russh stand-in that tabby-ssh loads: a public key's bytes are decoded like SSH data.
+    const intact = await app!.evaluate(`(() => {
+        const allBytes = btoa(String.fromCharCode(...Array.from({ length: 256 }, (_, i) => i)))
+        const bytes = window.require('russh').parsePublicKey('ssh-ed25519 ' + allBytes).bytes()
+        return Buffer.isBuffer(bytes) && bytes.length === 256 && Array.from(bytes).every((byte, i) => byte === i)
+    })()`)
+    expect(intact).toBe(true)
+})
+
 test('stages a run request without running it until the user presses Enter', { timeout: TEST_TIMEOUT_MS }, async ({ app, home }) => {
     await waitForTabby(app!)
     const proof = join(home, 'run-proof')

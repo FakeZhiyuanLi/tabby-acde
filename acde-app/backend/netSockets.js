@@ -18,6 +18,7 @@ class PageSocket {
             .on('end', () => this.emit({ type: 'end' }))
             .on('error', error => this.emit({ type: 'error', message: error.message, code: error.code }))
             .on('close', () => this.finish())
+        this.events.addSource(this.socket)
         this.socket.connect(port, host)
     }
 

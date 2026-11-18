@@ -64,9 +64,9 @@ argument (a host or `~/.ssh/config` alias) opens a plain SSH shell over the same
 
 | Suite | Command (from `acde-app/`) | Needs |
 | --- | --- | --- |
-| End-to-end (10 tests: shells, menus, splits, run requests, agent status) | `acde test` | Bun 1.4+ |
+| End-to-end (11 tests: shells, menus, splits, run requests, agent status) | `acde test` | Bun 1.4+ |
 | Backend unit tests (SSH config, known_hosts, algorithm choices) | `node --test backend/ssh.test.js` | Node.js |
-| SSH integration (10 tests against two throwaway OpenSSH servers) | `bash backend/test/run.sh` | Podman, network for the first image build |
+| SSH integration (11 tests against two throwaway OpenSSH servers) | `bash backend/test/run.sh` | Podman, network for the first image build |
 
 `run.sh` starts the servers in a private Podman pod with no published ports, makes a random password
 and a passphrase-protected key for each run, and removes the pod afterwards.

@@ -85,9 +85,9 @@ Every replaced dependency and each upstream change is listed in [`PORTING.md`](.
 
 | Suite | Tests | Runs with |
 | --- | --- | --- |
-| End-to-end, in acde | 10 | `acde test` |
+| End-to-end, in acde | 11 | `acde test` |
 | Backend unit (SSH config, known_hosts, algorithm choices) | 9 | `node --test backend/ssh.test.js` |
-| SSH integration, against two throwaway OpenSSH servers | 10 | `bash backend/test/run.sh` (Podman) |
+| SSH integration, against two throwaway OpenSSH servers | 11 | `bash backend/test/run.sh` (Podman) |
 
 End-to-end tests (`acde-app/e2e/tabby.e2e.ts`), each in a fresh session with its own HOME:
 
@@ -98,6 +98,7 @@ End-to-end tests (`acde-app/e2e/tabby.e2e.ts`), each in a fresh session with its
 | opens settings from the File menu | The native menu bar drives Tabby |
 | splits the terminal from the View menu | Split panes create a second terminal |
 | keeps panes undimmed when switching tabs | No pane is left at 10% opacity after tab switches |
+| decodes binary data from the backend | SSH bytes survive the base64 events intact |
 | stages a run request without running it until the user presses Enter | A request opens a titled tab; nothing runs until Enter |
 | rejects a run request whose command contains a newline | Control characters cannot smuggle in an Enter |
 | rejects a run request whose folder contains control characters | Nor can a folder name |
@@ -106,7 +107,8 @@ End-to-end tests (`acde-app/e2e/tabby.e2e.ts`), each in a fresh session with its
 
 The SSH integration tests cover host keys (and rejecting them), none and password sign-in,
 keyboard-interactive, a passphrase-protected key, an SFTP round trip, a jump host, a remote port
-forward, backend sockets, recovery after a dismissed prompt, and a connection closing mid-handshake.
+forward, backend sockets, recovery after a dismissed prompt, a connection closing mid-handshake, and backpressure: a server
+flooding a channel is paused while the reader is behind (at most about 1 MB queued), then resumes.
 
 Also checked by hand on macOS (Apple Silicon) against three servers over Tailscale: Tabby's SSH tab
 and host-key dialog, agent sign-in, SFTP listing, a byte-identical download and upload, a jump host,

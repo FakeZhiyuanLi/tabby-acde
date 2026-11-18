@@ -17,6 +17,12 @@ const OPEN_READ = 1
 const OPEN_WRITE = 2
 const OPEN_CREATE = 8
 const WAIT_MS = 10000
+// A flood the reader falls behind on, how long it stops reading, and how much it reads afterwards.
+const FLOOD_BYTES = 200 * 1024 * 1024
+const BEHIND_MS = 2000
+const RESUMED_BYTES = 20 * 1024 * 1024
+// The queue's limit (1 MiB) plus what was already on its way when the channel paused.
+const MAX_QUEUED_BYTES = 2 * 1024 * 1024
 
 function shared (name) {
     return readFileSync(join(TEST_SHARED, name), 'utf8')
@@ -243,4 +249,34 @@ test('closing a connection answers a handshake that is still pending', async () 
     const connection = connect({ kind: 'socket', address: ADDRESS }, {})
     connection.end()
     await assert.rejects(connection.handshake, /closed/)
+})
+
+test('a fast server is paused while the reader is behind, then resumes', async () => {
+    const connection = connect({ kind: 'socket', address: ADDRESS }, {})
+    try {
+        const reader = connection.eventStream().getReader()
+        const decoder = new TextDecoder()
+        let text = ''
+        while (!text.includes('"hostKey"')) {
+            text += decoder.decode((await reader.read()).value)
+        }
+        connection.answerHostKey(true)
+        await connection.handshake
+        assert.equal((await connection.authenticate({ type: 'password', username: USER, password: TEST_PASSWORD })).result, 'success')
+        const channel = connection.openSessionChannel()
+        await connection.requestExec(channel, `head -c ${FLOOD_BYTES} /dev/zero`)
+
+        await new Promise(resolve => setTimeout(resolve, BEHIND_MS))
+        const queued = connection.events.queuedBytes ?? connection.events.lines.join('').length
+        assert.ok(queued < MAX_QUEUED_BYTES, `${queued} bytes queued while the reader was behind`)
+
+        let read = 0
+        while (read < RESUMED_BYTES) {
+            const { done, value } = await reader.read()
+            assert.ok(!done, 'the stream ended before the server resumed')
+            read += value.length
+        }
+    } finally {
+        connection.end()
+    }
 })

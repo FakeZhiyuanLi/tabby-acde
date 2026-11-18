@@ -6,6 +6,8 @@
 // forwarding, proxies. Local and dynamic forwarding need a TCP listener, which acde backends lack.
 import { Subject } from 'rxjs'
 
+import { bytesFromBase64 } from './base64.js'
+
 const API = '/api/russh'
 
 export const OPEN_READ = 1
@@ -51,11 +53,6 @@ async function postBytes (url, body) {
     if (!response.ok) {
         throw new Error((await response.json().catch(() => ({}))).error ?? response.statusText)
     }
-}
-
-function fromBase64 (text) {
-    const bytes = Uint8Array.from(atob(text), c => c.charCodeAt(0))
-    return globalThis.Buffer ? globalThis.Buffer.from(bytes) : bytes
 }
 
 function unsupported (what) {
@@ -106,7 +103,7 @@ export function parsePublicKey (text) {
     if (!algorithm || !base64) {
         throw new Error('not an OpenSSH public key')
     }
-    return new SshPublicKey(algorithm, fromBase64(base64), `${algorithm} ${base64.slice(-12)}`)
+    return new SshPublicKey(algorithm, bytesFromBase64(base64), `${algorithm} ${base64.slice(-12)}`)
 }
 
 export class KeyPair {
@@ -200,16 +197,16 @@ class ConnectionEvents {
 
     dispatch (event) {
         if (event.type === 'hostKey') {
-            this.onHostKey?.(new SshPublicKey(event.algorithm, fromBase64(event.base64), event.fingerprint))
+            this.onHostKey?.(new SshPublicKey(event.algorithm, bytesFromBase64(event.base64), event.fingerprint))
         } else if (event.type === 'banner') {
             this.banner.next(event.text)
         } else if (event.type === 'tcpChannelOpen') {
             const { targetAddress, targetPort, clientAddress, clientPort } = event
             this.tcpChannelOpen.next({ channel: new NewChannel({ connection: this.id, channel: event.channel }), targetAddress, targetPort, clientAddress, clientPort })
         } else if (event.type === 'data') {
-            this.channel(event.channel).data.next(fromBase64(event.data))
+            this.channel(event.channel).data.next(bytesFromBase64(event.data))
         } else if (event.type === 'extendedData') {
-            this.channel(event.channel).extendedData.next([event.ext, fromBase64(event.data)])
+            this.channel(event.channel).extendedData.next([event.ext, bytesFromBase64(event.data)])
         } else if (event.type === 'eof') {
             this.channel(event.channel).eof.next()
         } else if (event.type === 'close') {
@@ -499,7 +496,7 @@ export class SFTP extends Destructible {
         super()
         this.base = `/connections/${connectionId}/sftp/${channel}`
         const closed = new Subject()
-        disconnect.subscribe({ complete: () => closed.next() })
+        this.disconnectSubscription = disconnect.subscribe({ complete: () => closed.next() })
         this.closedSubject = closed
         this.closed$ = closed.asObservable()
     }
@@ -547,6 +544,7 @@ export class SFTP extends Destructible {
 
     async close () {
         await this.op('close')
+        this.disconnectSubscription.unsubscribe()
         this.closedSubject.next()
     }
 }

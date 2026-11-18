@@ -2,6 +2,8 @@
 // app's acde backend (backend/netSockets.js). tabby-ssh uses Socket to connect a remote port forward
 // to its local target. Listening (createServer) is not possible: acde turns every backend listen()
 // into a private Unix socket, so nothing else could connect to it.
+import { bytesFromBase64 } from './base64.js'
+
 const API = '/api/russh/sockets'
 const WAIT_FOR_ID_MS = 20
 const WAIT_FOR_ID_TRIES = 100
@@ -81,7 +83,7 @@ export class Socket extends Emitter {
 
     dispatch (event) {
         if (event.type === 'data') {
-            this.emit('data', toBuffer(Uint8Array.from(atob(event.data), c => c.charCodeAt(0))))
+            this.emit('data', bytesFromBase64(event.data))
         } else if (event.type === 'error') {
             this.emit('error', Object.assign(new Error(event.message), { code: event.code }))
         } else if (event.type === 'close') {

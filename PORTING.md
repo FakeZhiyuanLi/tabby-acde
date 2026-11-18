@@ -150,10 +150,11 @@ private Unix socket that nothing else can reach (`net.createServer` throws with 
 commands and SOCKS/HTTP proxies (skipped); X11 forwarding and Pageant (no X server or Pageant).
 
 Tests: `acde-app/backend/test/run.sh` (rack-laptop, Podman) starts two throwaway OpenSSH servers in
-a private pod with no published ports and per-run credentials, and runs 10 integration tests against
+a private pod with no published ports and per-run credentials, and runs 11 integration tests against
 the bridge: host keys and rejecting them, none/password, keyboard-interactive, a passphrase-protected
 key, an SFTP round trip, a jump host, a remote forward, a backend socket, recovery after a
-dismissed keyboard-interactive prompt, and a connection closing mid-handshake. Verified by hand in
+dismissed keyboard-interactive prompt, a connection closing mid-handshake, and a fast server that is paused
+while the page falls behind. Verified by hand in
 Tabby on macOS against three servers over Tailscale: agent sign-in, host key dialogs (fingerprints
 checked against the Mac's known_hosts), SFTP listing, a download and an upload (byte-identical),
 and a jump host (rack2 reached through rack1).

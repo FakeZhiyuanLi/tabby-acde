@@ -311,12 +311,15 @@ class Connection {
     }
 
     attach (id, stream) {
+        const sources = [stream, stream.stderr].filter(Boolean)
+        sources.forEach(source => this.events.addSource(source))
         stream.on('data', data => this.emit({ type: 'data', channel: id, data: data.toString('base64') }))
         stream.stderr?.on('data', data => this.emit({ type: 'extendedData', channel: id, ext: 1, data: data.toString('base64') }))
         stream.on('end', () => this.emit({ type: 'eof', channel: id }))
         stream.on('close', () => {
             this.emit({ type: 'close', channel: id })
             this.channels.delete(id)
+            sources.forEach(source => this.events.removeSource(source))
         })
     }
 

@@ -72,7 +72,7 @@ Every replaced dependency and each upstream change is listed in [`PORTING.md`](.
   `window.pluginModules`) and accessible names for Tabby's icon buttons. All three are useful
   upstream.
 - Workarounds for platform gaps, each written up with a reproduction and a suggested fix in
-  [`PLATFORM-FEEDBACK.md`](PLATFORM-FEEDBACK.md) (16 items). The main one: acdert's DOM classes have
+  [`PLATFORM-FEEDBACK.md`](PLATFORM-FEEDBACK.md) (17 items). The main one: acdert's DOM classes have
   non-enumerable methods, so zone.js (used by every Angular app) produces observers with no
   `observe()`. It crashed xterm.js and acde's own frame code until diagnosed.
 - `acde:terminal` cannot start a specific program or folder, so profiles type
@@ -85,7 +85,7 @@ Every replaced dependency and each upstream change is listed in [`PORTING.md`](.
 
 | Suite | Tests | Runs with |
 | --- | --- | --- |
-| End-to-end, in acde | 9 | `acde test` |
+| End-to-end, in acde | 10 | `acde test` |
 | Backend unit (SSH config, known_hosts, algorithm choices) | 9 | `node --test backend/ssh.test.js` |
 | SSH integration, against two throwaway OpenSSH servers | 10 | `bash backend/test/run.sh` (Podman) |
 
@@ -97,6 +97,7 @@ End-to-end tests (`acde-app/e2e/tabby.e2e.ts`), each in a fresh session with its
 | runs a command in a local shell on acde:terminal | A command typed in a new tab writes a file in the session's HOME |
 | opens settings from the File menu | The native menu bar drives Tabby |
 | splits the terminal from the View menu | Split panes create a second terminal |
+| keeps panes undimmed when switching tabs | No pane is left at 10% opacity after tab switches |
 | stages a run request without running it until the user presses Enter | A request opens a titled tab; nothing runs until Enter |
 | rejects a run request whose command contains a newline | Control characters cannot smuggle in an Enter |
 | rejects a run request whose folder contains control characters | Nor can a folder name |

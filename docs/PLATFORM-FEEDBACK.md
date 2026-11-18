@@ -171,3 +171,16 @@ with `launchctl getenv SSH_AUTH_SOCK` on macOS; there is no equivalent on Linux.
 
 **Suggested fix:** pass `SSH_AUTH_SOCK` through like the proxy variables, or offer it as a
 capability.
+
+## 17. `classList.toggle(token, null)` flips the class
+
+**Seen:** in browsers the second argument of `DOMTokenList.toggle` is converted to a boolean, so
+`null` removes the class. acdert treats `null` like a missing argument and flips it. Tabby calls
+`classList.toggle('minimized', maximizedTab && …)`, which is `null` when no pane is maximized, so
+every relayout alternately dimmed (opacity .1) and restored each terminal pane: switching tabs left
+the terminal dark until the next click. Reproduce with
+`e.classList.add('x'); e.classList.toggle('x', null); e.classList.contains('x')`: `true` in acdert,
+`false` in browsers. The app patches `toggle` in `index.html`.
+
+**Suggested fix:** convert a defined second argument with `Boolean()`, as WebIDL does for an
+optional `boolean`; check other optional boolean parameters for the same conversion.

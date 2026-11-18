@@ -66,6 +66,23 @@ test('splits the terminal from the View menu', { timeout: TEST_TIMEOUT_MS }, asy
     await expect(app!.locator('textarea.xterm-helper-textarea')).toHaveCount(2, { timeout: STEP_TIMEOUT_MS })
 })
 
+test('keeps panes undimmed when switching tabs', { timeout: TEST_TIMEOUT_MS }, async ({ app }) => {
+    await waitForTabby(app!)
+    await openTerminal(app!)
+    await openTerminal(app!)
+    await app!.keyboard.press('Control+Shift+Tab')
+    await app!.keyboard.press('Control+Tab')
+    await app!.keyboard.press('Control+Shift+Tab')
+    expect(await app!.evaluate('document.querySelectorAll(".minimized").length')).toBe(0)
+    // As in browsers, a null force removes the class rather than flipping it.
+    expect(await app!.evaluate(`(() => {
+        const element = document.createElement('i')
+        element.classList.add('on')
+        element.classList.toggle('on', null)
+        return element.classList.contains('on')
+    })()`)).toBe(false)
+})
+
 test('stages a run request without running it until the user presses Enter', { timeout: TEST_TIMEOUT_MS }, async ({ app, home }) => {
     await waitForTabby(app!)
     const proof = join(home, 'run-proof')

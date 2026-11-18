@@ -12,6 +12,14 @@
       window.__Zone_disable_MutationObserver = true
       window.__Zone_disable_IntersectionObserver = true
       window.__Zone_disable_FileReader = true
+
+      // acdert's classList.toggle(token, null) flips the class; browsers convert the second argument
+      // to a boolean, so null means "remove". Tabby passes null when no split pane is maximized, and
+      // each relayout dimmed or undimmed every pane (opacity .1) until the next click.
+      const toggleToken = DOMTokenList.prototype.toggle
+      DOMTokenList.prototype.toggle = function (token, force) {
+        return force === undefined ? toggleToken.call(this, token) : toggleToken.call(this, token, !!force)
+      }
     </script>
     <script src="/tabby/preload.js"></script>
     <script>

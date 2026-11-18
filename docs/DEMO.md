@@ -74,3 +74,6 @@ Fallback: `phase6-run-request-staged.png`.
 > agent features that only make sense on an agent OS. The write-up lists the platform feedback."
 
 Show `docs/PLATFORM-FEEDBACK.md` item 1 (the zone.js bug) if there is time for questions.
+
+> Note: in the agent-driven demos, the conducting agent leaves approvals to you because its
+> instructions say so; Tabby itself enforces this for run requests.

@@ -103,3 +103,11 @@ test('shows a waiting agent in the window title until it is answered', { timeout
     await runInTerminal(app!, '1')
     await expect(app!).not.toHaveTitle(/waiting/, { timeout: STEP_TIMEOUT_MS })
 })
+
+test('recognises a Codex approval prompt as waiting', { timeout: TEST_TIMEOUT_MS }, async ({ app }) => {
+    await waitForTabby(app!)
+    await openTerminal(app!)
+    // What Codex prints: a working line, then an edit approval whose footer also says "esc to cancel".
+    await runInTerminal(app!, "printf 'Working (esc to interrupt)\\n'; sleep 1; printf 'Would you like to make the following edits?\\n  1. Yes, proceed (y)\\nPress enter to confirm or esc to cancel\\n'; read answer")
+    await expect(app!).toHaveTitle(/\(1 waiting\)/, { timeout: STEP_TIMEOUT_MS })
+})

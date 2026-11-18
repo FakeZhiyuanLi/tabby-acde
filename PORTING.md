@@ -91,8 +91,9 @@ be a local profile with command `ssh` and args `[user@host]`, using the system s
 ## Cut, and why
 
 - Serial and telnet: serial ports and raw sockets.
-- SFTP, port forwarding, jump hosts and X11 from `tabby-ssh`: its UI is tied to the `russh` API.
-  SSH shell sessions are back through the backend (below).
+- From `tabby-ssh`: local and SOCKS port forwarding (acde backends cannot listen on a TCP port),
+  proxy commands and SOCKS/HTTP proxies, X11 forwarding and Pageant. Everything else in it is
+  ported (see "Tabby's own SSH plugin on a russh stand-in" below).
 - Plugin manager, auto-updater, docking, touch bar, Windows UAC: no equivalent on Dopame OS.
 
 ## Platform feedback for Return AI
@@ -149,9 +150,10 @@ private Unix socket that nothing else can reach (`net.createServer` throws with 
 commands and SOCKS/HTTP proxies (skipped); X11 forwarding and Pageant (no X server or Pageant).
 
 Tests: `acde-app/backend/test/run.sh` (rack-laptop, Podman) starts two throwaway OpenSSH servers in
-a private pod with no published ports and per-run credentials, and runs 8 integration tests against
+a private pod with no published ports and per-run credentials, and runs 10 integration tests against
 the bridge: host keys and rejecting them, none/password, keyboard-interactive, a passphrase-protected
-key, an SFTP round trip, a jump host, a remote forward and a backend socket. Verified by hand in
+key, an SFTP round trip, a jump host, a remote forward, a backend socket, recovery after a
+dismissed keyboard-interactive prompt, and a connection closing mid-handshake. Verified by hand in
 Tabby on macOS against three servers over Tailscale: agent sign-in, host key dialogs (fingerprints
 checked against the Mac's known_hosts), SFTP listing, a download and an upload (byte-identical),
 and a jump host (rack2 reached through rack1).

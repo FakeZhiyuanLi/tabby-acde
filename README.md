@@ -1,4 +1,4 @@
-> **Branch `acde`: Tabby ported to Dopame OS (acde).** Start with [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md); what changed and why is in [PORTING.md](PORTING.md).
+> **Branch `acde`: Tabby ported to Dopame OS (acde).** Write-up: [docs/WRITEUP.md](docs/WRITEUP.md) · bundle: [release v1.0.238-acde.1](https://github.com/FakeZhiyuanLi/tabby-acde/releases/tag/v1.0.238-acde.1) · build and run: [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) · porting notes: [PORTING.md](PORTING.md).
 
 [![](docs/readme.png)](https://tabby.sh)
 

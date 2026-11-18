@@ -11,7 +11,7 @@ Challenge track: **Port + Extend.**
 | Deliverable | Where |
 | --- | --- |
 | Code repository | This repository, branch `acde` (full upstream history, 6,586 commits, kept) |
-| Bundle Dopame OS loads | GitHub Release [`v1.0.238-acde.1`](https://github.com/FakeZhiyuanLi/tabby-acde/releases/tag/v1.0.238-acde.1): the `acde build` output, with its SHA-256 and commit |
+| Bundle Dopame OS loads | GitHub Release [`v1.0.238-acde.2`](https://github.com/FakeZhiyuanLi/tabby-acde/releases/tag/v1.0.238-acde.2): the `acde build` output, with its SHA-256 and commit |
 | Write-up with porting notes | This file and [`PORTING.md`](../PORTING.md) |
 | Pitch deck | Shared separately |
 
